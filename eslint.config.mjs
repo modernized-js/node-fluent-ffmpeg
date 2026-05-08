@@ -34,6 +34,8 @@ export default [
       'no-cond-assign': 'off',
       'no-redeclare': 'off',
       'no-prototype-builtins': 'off',
+      'no-useless-assignment': 'off',
+      'preserve-caught-error': 'off',
     },
   },
   // Legacy mocha tests — same treatment.
