@@ -28,7 +28,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "async": "^0.2.9",
