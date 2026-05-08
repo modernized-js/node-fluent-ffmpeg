@@ -32,11 +32,12 @@
   },
   "dependencies": {
     "async": "^0.2.9",
-    "which": "^1.1.1"
+    "which": "^7.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.2",
+    "@types/which": "^3.0.4",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.0.1",
     "globals": "^17.6.0",
@@ -56,7 +57,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\"",
-    "test:legacy": "NODE_ENV=test mocha --require should --reporter spec test/*.test.js",
+    "test:legacy": "NODE_ENV=test NODE_OPTIONS='--import tsx' mocha --require should --reporter spec test/*.test.js",
     "coverage": "nyc report --reporter=lcov"
   }
 }
