@@ -18,6 +18,6 @@
     "checkJs": false,
     "noEmit": true
   },
-  "include": ["lib/**/*", "test/**/*", "index.js"],
+  "include": ["lib/**/*", "test/**/*", "index.ts"],
   "exclude": ["node_modules", "dist", "examples", "doc", "tools"]
 }

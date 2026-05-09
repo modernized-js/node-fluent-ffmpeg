@@ -8,6 +8,6 @@
     "sourceMap": true,
     "rootDir": "."
   },
-  "include": ["lib/**/*", "index.js"],
+  "include": ["lib/**/*", "index.ts"],
   "exclude": ["node_modules", "dist", "test", "examples", "doc", "tools"]
 }

@@ -230,6 +230,7 @@ export interface FfmpegCommandThis extends EventEmitter {
   kill(signal?: string): this;
 
   // options/* (chainable methods called from option modules and recipes)
+  input(source: string | Readable): this;
   duration(d: string | number): this;
   videoFilters(filters: FilterSpec[]): this;
   output(target?: string | Writable, pipeopts?: Record<string, unknown>): this;
