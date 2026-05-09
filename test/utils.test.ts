@@ -819,4 +819,26 @@ describe('utils.which (callback wrapper around which@7)', () => {
     assert.equal(observedDuringCallback, 0, 'cached lookup must be synchronous');
     assert.ok(cachedValue.length > 0);
   });
+
+  it('caches misses so a repeat lookup of an unknown binary is also synchronous', async () => {
+    // The wrapper turns failures into '' rather than errors, and caches that
+    // empty result the same as a hit. A regression that only re-invoked
+    // which@7 on cache-misses would still pass the positive-hit sync test,
+    // so we have to lock the failure-cache branch down explicitly.
+    const missing = `__definitely_missing_${Date.now()}__`;
+    await new Promise<string>((resolve) => {
+      utils.which(missing, (_err, path) => resolve(path));
+    });
+
+    let postCallSync = 0;
+    let observedDuringCallback = -1;
+    let cachedValue: string | null = null;
+    utils.which(missing, (_err, path) => {
+      observedDuringCallback = postCallSync;
+      cachedValue = path;
+    });
+    postCallSync = 1;
+    assert.equal(observedDuringCallback, 0, 'cached miss must be synchronous');
+    assert.equal(cachedValue, '');
+  });
 });
