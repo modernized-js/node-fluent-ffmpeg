@@ -1,41 +1,39 @@
-/*jshint node:true*/
-'use strict';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import type { FfmpegCommandPrototype, FfmpegCommandThis } from '../types.js';
 
-var path = require('path');
+const requireFromHere = createRequire(__filename);
 
-/*
- *! Miscellaneous methods
- */
+type PresetModule = { load?: (cmd: FfmpegCommandThis) => void };
 
-module.exports = function(proto) {
-  /**
-   * Use preset
-   *
-   * @method FfmpegCommand#preset
-   * @category Miscellaneous
-   * @aliases usingPreset
-   *
-   * @param {String|Function} preset preset name or preset function
-   */
-  proto.usingPreset =
-  proto.preset = function(preset) {
+function loadPresetByName(this: FfmpegCommandThis, preset: string): void {
+  const modulePath = path.join(this.options.presets ?? '', preset);
+  let mod: PresetModule;
+  try {
+    mod = requireFromHere(modulePath) as PresetModule;
+  } catch (err) {
+    throw new Error(`preset ${modulePath} could not be loaded: ${(err as Error).message}`, {
+      cause: err,
+    });
+  }
+  if (typeof mod.load !== 'function') {
+    throw new Error(`preset ${modulePath} has no load() function`);
+  }
+  mod.load(this);
+}
+
+function applyMiscOptions(proto: FfmpegCommandPrototype): void {
+  proto.usingPreset = proto.preset = function (
+    this: FfmpegCommandThis,
+    preset: string | ((cmd: FfmpegCommandThis) => void),
+  ) {
     if (typeof preset === 'function') {
       preset(this);
     } else {
-      try {
-        var modulePath = path.join(this.options.presets, preset);
-        var module = require(modulePath);
-
-        if (typeof module.load === 'function') {
-          module.load(this);
-        } else {
-          throw new Error('preset ' + modulePath + ' has no load() function');
-        }
-      } catch (err) {
-        throw new Error('preset ' + modulePath + ' could not be loaded: ' + err.message);
-      }
+      loadPresetByName.call(this, preset);
     }
-
     return this;
   };
-};
+}
+
+export = applyMiscOptions;

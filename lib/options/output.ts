@@ -1,162 +1,108 @@
-/*jshint node:true*/
-'use strict';
+import type { Writable } from 'node:stream';
+import utils from '../utils.js';
+import type { FfmpegCommandPrototype, FfmpegCommandThis, OutputState } from '../types.js';
 
-var utils = require('../utils');
+function isWritable(value: unknown): value is Writable {
+  return typeof value === 'object' && value !== null && 'writable' in value;
+}
 
+function makeOutputState(
+  target?: string | Writable,
+  isFile = false,
+  pipeopts: Record<string, unknown> = {},
+): OutputState {
+  const state: OutputState = {
+    isFile,
+    pipeopts,
+    audio: utils.args(),
+    audioFilters: utils.args(),
+    video: utils.args(),
+    videoFilters: utils.args(),
+    sizeFilters: utils.args(),
+    options: utils.args(),
+    flags: {},
+  };
+  if (target !== undefined) state.target = target;
+  return state;
+}
 
-/*
- *! Output-related methods
- */
+function classifyOutput(target: string | Writable): { isFile: boolean } {
+  if (typeof target === 'string') {
+    const protocol = target.match(/^([a-z]{2,}):/i);
+    return { isFile: !protocol || protocol[0] === 'file' };
+  }
+  if (!isWritable(target) || !target.writable) {
+    throw new Error('Invalid output');
+  }
+  return { isFile: false };
+}
 
-module.exports = function(proto) {
-  /**
-   * Add output
-   *
-   * @method FfmpegCommand#output
-   * @category Output
-   * @aliases addOutput
-   *
-   * @param {String|Writable} target target file path or writable stream
-   * @param {Object} [pipeopts={}] pipe options (only applies to streams)
-   * @return FfmpegCommand
-   */
-  proto.addOutput =
-  proto.output = function(target, pipeopts) {
-    var isFile = false;
-
-    if (!target && this._currentOutput) {
-      // No target is only allowed when called from constructor
+function applyOutputOptions(proto: FfmpegCommandPrototype): void {
+  proto.addOutput = proto.output = function (
+    this: FfmpegCommandThis,
+    target?: string | Writable,
+    pipeopts?: Record<string, unknown>,
+  ) {
+    if (!target && this._currentOutput !== undefined) {
       throw new Error('Invalid output');
     }
 
+    const { isFile } = target ? classifyOutput(target) : { isFile: false };
+    const current = this._currentOutput;
+
+    if (target && current && !('target' in current)) {
+      current.target = target;
+      current.isFile = isFile;
+      current.pipeopts = pipeopts ?? {};
+      return this;
+    }
+
     if (target && typeof target !== 'string') {
-      if (!('writable' in target) || !(target.writable)) {
-        throw new Error('Invalid output');
-      }
-    } else if (typeof target === 'string') {
-      var protocol = target.match(/^([a-z]{2,}):/i);
-      isFile = !protocol || protocol[0] === 'file';
-    }
-
-    if (target && !('target' in this._currentOutput)) {
-      // For backwards compatibility, set target for first output
-      this._currentOutput.target = target;
-      this._currentOutput.isFile = isFile;
-      this._currentOutput.pipeopts = pipeopts || {};
-    } else {
-      if (target && typeof target !== 'string') {
-        var hasOutputStream = this._outputs.some(function(output) {
-          return typeof output.target !== 'string';
-        });
-
-        if (hasOutputStream) {
-          throw new Error('Only one output stream is supported');
-        }
-      }
-
-      this._outputs.push(this._currentOutput = {
-        target: target,
-        isFile: isFile,
-        flags: {},
-        pipeopts: pipeopts || {}
-      });
-
-      var self = this;
-      ['audio', 'audioFilters', 'video', 'videoFilters', 'sizeFilters', 'options'].forEach(function(key) {
-        self._currentOutput[key] = utils.args();
-      });
-
-      if (!target) {
-        // Call from constructor: remove target key
-        delete this._currentOutput.target;
+      const hasOutputStream = this._outputs.some(
+        (output) => output.target !== undefined && typeof output.target !== 'string',
+      );
+      if (hasOutputStream) {
+        throw new Error('Only one output stream is supported');
       }
     }
 
+    const newOutput = makeOutputState(target, isFile, pipeopts ?? {});
+    this._currentOutput = newOutput;
+    this._outputs.push(newOutput);
     return this;
   };
 
-
-  /**
-   * Specify output seek time
-   *
-   * @method FfmpegCommand#seek
-   * @category Input
-   * @aliases seekOutput
-   *
-   * @param {String|Number} seek seek time in seconds or as a '[hh:[mm:]]ss[.xxx]' string
-   * @return FfmpegCommand
-   */
-  proto.seekOutput =
-  proto.seek = function(seek) {
-    this._currentOutput.options('-ss', seek);
+  proto.seekOutput = proto.seek = function (this: FfmpegCommandThis, seek: string | number) {
+    this._currentOutput!.options('-ss', seek);
     return this;
   };
 
-
-  /**
-   * Set output duration
-   *
-   * @method FfmpegCommand#duration
-   * @category Output
-   * @aliases withDuration,setDuration
-   *
-   * @param {String|Number} duration duration in seconds or as a '[[hh:]mm:]ss[.xxx]' string
-   * @return FfmpegCommand
-   */
   proto.withDuration =
-  proto.setDuration =
-  proto.duration = function(duration) {
-    this._currentOutput.options('-t', duration);
-    return this;
-  };
+    proto.setDuration =
+    proto.duration =
+      function (this: FfmpegCommandThis, duration: string | number) {
+        this._currentOutput!.options('-t', duration);
+        return this;
+      };
 
-
-  /**
-   * Set output format
-   *
-   * @method FfmpegCommand#format
-   * @category Output
-   * @aliases toFormat,withOutputFormat,outputFormat
-   *
-   * @param {String} format output format name
-   * @return FfmpegCommand
-   */
   proto.toFormat =
-  proto.withOutputFormat =
-  proto.outputFormat =
-  proto.format = function(format) {
-    this._currentOutput.options('-f', format);
+    proto.withOutputFormat =
+    proto.outputFormat =
+    proto.format =
+      function (this: FfmpegCommandThis, format: string) {
+        this._currentOutput!.options('-f', format);
+        return this;
+      };
+
+  proto.map = function (this: FfmpegCommandThis, spec: string) {
+    this._currentOutput!.options('-map', spec.replace(utils.streamRegexp, '[$1]'));
     return this;
   };
 
-
-  /**
-   * Add stream mapping to output
-   *
-   * @method FfmpegCommand#map
-   * @category Output
-   *
-   * @param {String} spec stream specification string, with optional square brackets
-   * @return FfmpegCommand
-   */
-  proto.map = function(spec) {
-    this._currentOutput.options('-map', spec.replace(utils.streamRegexp, '[$1]'));
+  proto.updateFlvMetadata = proto.flvmeta = function (this: FfmpegCommandThis) {
+    this._currentOutput!.flags.flvmeta = true;
     return this;
   };
+}
 
-
-  /**
-   * Run flvtool2/flvmeta on output
-   *
-   * @method FfmpegCommand#flvmeta
-   * @category Output
-   * @aliases updateFlvMetadata
-   *
-   * @return FfmpegCommand
-   */
-  proto.updateFlvMetadata =
-  proto.flvmeta = function() {
-    this._currentOutput.flags.flvmeta = true;
-    return this;
-  };
-};
+export = applyOutputOptions;
