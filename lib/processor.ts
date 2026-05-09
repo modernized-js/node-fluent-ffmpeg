@@ -16,7 +16,12 @@ import type {
 
 const NICENESS_MIN = -20;
 const NICENESS_MAX = 20;
-const OUTPUT_STREAM_GRACE_MS = 20;
+// Windows-friendly grace: the output stream can finalise (target.on('close'))
+// before ffmpegProc.on('exit') fires, especially on Windows GH Actions where
+// the legacy 20ms grace consistently lost the race and surfaced a spurious
+// `Output stream closed` error after a successful run. 250ms is enough for
+// every platform we ship to (verified in mulmocast-cli CI).
+const OUTPUT_STREAM_GRACE_MS = 250;
 const MS_PER_SECOND = 1000;
 
 interface ReportingError extends Error {
@@ -248,8 +253,12 @@ function pipeOutputStream(
   target.on('close', () => {
     self.logger.debug('Output stream closed, scheduling kill for ffmpeg process');
     // Give ffmpeg a chance to exit cleanly first; under load 'exit' sometimes
-    // arrives after the output stream's 'close'.
+    // arrives after the output stream's 'close'. The re-check inside the
+    // timeout skips the error path when ffmpeg has exited cleanly during
+    // the grace window — that is the natural end-of-pipeline shape on
+    // streamed output and shouldn't fire `Output stream closed`.
     setTimeout(() => {
+      if (ffmpegProc.exitCode !== null || ffmpegProc.killed) return;
       emitEnd(new Error('Output stream closed'));
       ffmpegProc.kill();
     }, OUTPUT_STREAM_GRACE_MS);

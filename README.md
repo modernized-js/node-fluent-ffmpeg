@@ -73,6 +73,23 @@ ffmpeg("input.mp4")
   });
 ```
 
+### Upstream behaviour divergence
+
+This fork ships **one runtime-behaviour fix** that diverges from upstream
+`fluent-ffmpeg`: the long-standing `'Output stream closed'` race in
+`.pipe()` / `.writeToStream()` (upstream issues
+[#597](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/597),
+[#1067](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1067),
+[#1135](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1135),
+[#1199](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1199),
+[#1223](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1223),
+open since 2016) is fixed. The 20 ms grace between `target.on('close')`
+and `ffmpegProc.on('exit')` was too short on Windows GH Actions, which
+caused successful encodes to fire `'error'` instead of `'end'`. This
+fork extends the grace and re-checks `ffmpegProc.exitCode` inside the
+timeout, so the `'error'` only fires when ffmpeg is genuinely hanging.
+See [issue #30](https://github.com/modernized-js/node-fluent-ffmpeg/issues/30).
+
 ## Usage
 
 You will find a lot of usage examples (including a real-time streaming example using [flowplayer](http://www.flowplayer.org) and [express](https://github.com/visionmedia/express)!) in the `examples` folder.
