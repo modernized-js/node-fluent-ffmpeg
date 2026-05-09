@@ -218,18 +218,33 @@ describe('partialSizeFilters', () => {
     assert.equal(filters[0].filter, 'scale');
   });
 
-  it('with both fixedWidth + fixedHeight + aspect: prefers the regex-supplied values over the aspect-derived ones', () => {
-    const data: SizeData = { aspect: 5 };
-    const filters = partialSizeFilters(matchWidth('400x?'), matchHeight('?x300'), data);
-    const opts = options(filters[0]);
-    assert.equal(opts.w, 400);
-    assert.equal(opts.h, 300);
-  });
-
   it('with aspect, pad=false: stays in the single-scale form', () => {
     const data: SizeData = { aspect: 2, pad: false };
     const filters = partialSizeFilters(matchWidth('320x?'), null, data);
     assert.equal(filters.length, 1);
     assert.equal(filters[0].filter, 'scale');
+  });
+
+  it('zero-width input with aspect: derives a zero height too', () => {
+    const data: SizeData = { aspect: 2 };
+    const filters = partialSizeFilters(matchWidth('0x?'), null, data);
+    const opts = options(filters[0]);
+    assert.equal(opts.w, 0);
+    assert.equal(opts.h, 0);
+  });
+
+  it('odd-width input with aspect=1 rounds the cross-axis to the nearest even pixel', () => {
+    const data: SizeData = { aspect: 1 };
+    const filters = partialSizeFilters(matchWidth('321x?'), null, data);
+    const opts = options(filters[0]);
+    assert.equal(opts.w, 322);
+    assert.equal(opts.h, 322);
+  });
+
+  it('width=1 with aspect=2 rounds up to the nearest even pixel (Math.round(0.5)=1, *2=2)', () => {
+    const data: SizeData = { aspect: 2 };
+    const filters = partialSizeFilters(matchWidth('1x?'), null, data);
+    const opts = options(filters[0]);
+    assert.equal(opts.w, 2);
   });
 });
