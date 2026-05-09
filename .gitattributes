@@ -1,0 +1,12 @@
+# Force LF line endings for all text files so the prettier `endOfLine: 'lf'`
+# rule doesn't trip on Windows checkouts that would otherwise convert to CRLF.
+* text=auto eol=lf
+
+# Test fixtures are binary
+*.avi binary
+*.mp4 binary
+*.mpg binary
+*.flv binary
+*.wav binary
+*.png binary
+*.tgz binary
