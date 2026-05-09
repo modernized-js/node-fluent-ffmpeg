@@ -13,7 +13,7 @@ import type {
 const PERCENT_BASE = 100;
 const PIXEL_ROUND_STEP = 2;
 
-interface ScreenshotConfig {
+export interface ScreenshotConfig {
   count?: number;
   folder?: string;
   filename?: string;
@@ -23,7 +23,7 @@ interface ScreenshotConfig {
   size?: string;
 }
 
-interface ResolvedSize {
+export interface ResolvedSize {
   fixedSize: RegExpMatchArray | null;
   fixedWidth: RegExpMatchArray | null;
   fixedHeight: RegExpMatchArray | null;
@@ -39,20 +39,19 @@ async function fileExists(p: string): Promise<boolean> {
   }
 }
 
-function pickBiggestVideoStream(meta: FfprobeData): FfprobeStream {
-  return meta.streams.reduce<FfprobeStream>(
-    (biggest, stream) => {
-      if (
-        stream.codec_type === 'video' &&
-        Number(stream.width) * Number(stream.height) >
-          Number(biggest.width) * Number(biggest.height)
-      ) {
-        return stream;
-      }
-      return biggest;
-    },
-    { width: 0, height: 0 } as FfprobeStream,
-  );
+export function pickBiggestVideoStream(meta: FfprobeData): FfprobeStream {
+  // Fresh seed per call: a shared singleton would let a caller poison later
+  // lookups by mutating the returned stream object.
+  const seed: FfprobeStream = { width: 0, height: 0 };
+  return meta.streams.reduce<FfprobeStream>((biggest, stream) => {
+    if (
+      stream.codec_type === 'video' &&
+      Number(stream.width) * Number(stream.height) > Number(biggest.width) * Number(biggest.height)
+    ) {
+      return stream;
+    }
+    return biggest;
+  }, seed);
 }
 
 function probeFfprobe(self: FfmpegCommandThis): Promise<FfprobeData> {
@@ -70,7 +69,7 @@ function memoizeFfprobe(self: FfmpegCommandThis): () => Promise<FfprobeData> {
   };
 }
 
-function normaliseScreenshotConfig(
+export function normaliseScreenshotConfig(
   input: number | ScreenshotConfig | undefined,
   folder?: string,
 ): ScreenshotConfig {
@@ -93,7 +92,7 @@ function normaliseScreenshotConfig(
   return config;
 }
 
-function parseSizeSpec(size: string | undefined): ResolvedSize {
+export function parseSizeSpec(size: string | undefined): ResolvedSize {
   if (!size) return { fixedSize: null, fixedWidth: null, fixedHeight: null, percentSize: null };
   const fixedSize = size.match(/^(\d+)x(\d+)$/);
   const fixedWidth = size.match(/^(\d+)x\?$/);
@@ -105,7 +104,7 @@ function parseSizeSpec(size: string | undefined): ResolvedSize {
   return { fixedSize, fixedWidth, fixedHeight, percentSize };
 }
 
-function isPercentTimemark(t: string | number): boolean {
+export function isPercentTimemark(t: string | number): boolean {
   return /^[\d.]+%$/.test(String(t));
 }
 
@@ -136,7 +135,7 @@ async function resolvePercentTimemarks(
   });
 }
 
-function fixPattern(config: ScreenshotConfig): string {
+export function fixPattern(config: ScreenshotConfig): string {
   let pattern = config.filename ?? 'tn.png';
   if (!pattern.includes('.')) pattern += '.png';
   if (config.timemarks!.length > 1 && !/%(s|0*i)/.test(pattern)) {
@@ -146,7 +145,7 @@ function fixPattern(config: ScreenshotConfig): string {
   return pattern;
 }
 
-function replaceFilenameTokens(pattern: string, source: string | unknown): string {
+export function replaceFilenameTokens(pattern: string, source: string | unknown): string {
   if (!/%[bf]/.test(pattern)) return pattern;
   if (typeof source !== 'string') {
     throw new Error('Cannot replace %f or %b when using an input stream');
@@ -156,7 +155,7 @@ function replaceFilenameTokens(pattern: string, source: string | unknown): strin
     .replace(/%b/g, path.basename(source, path.extname(source)));
 }
 
-interface SizeForTokens {
+export interface SizeForTokens {
   width: number;
   height: number;
 }
@@ -200,14 +199,14 @@ async function computeSizeForTokens(
   };
 }
 
-function replaceSizeTokens(pattern: string, size: SizeForTokens): string {
+export function replaceSizeTokens(pattern: string, size: SizeForTokens): string {
   return pattern
     .replace(/%r/g, '%wx%h')
     .replace(/%w/g, String(size.width))
     .replace(/%h/g, String(size.height));
 }
 
-function generateFilenames(pattern: string, timemarks: (string | number)[]): string[] {
+export function generateFilenames(pattern: string, timemarks: (string | number)[]): string[] {
   return timemarks.map((t, i) =>
     pattern
       .replace(/%s/g, String(utils.timemarkToSeconds(t)))
@@ -367,4 +366,4 @@ function applyRecipes(proto: FfmpegCommandPrototype): void {
       };
 }
 
-export = applyRecipes;
+export default applyRecipes;
