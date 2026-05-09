@@ -1,16 +1,9 @@
 node_modules
 dist
 coverage
-.nyc_output
 examples
 doc
 tools
 yarn.lock
 package-lock.json
-
-# Legacy files — reformat on a per-file basis as they migrate to TypeScript.
-# Each entry below should be removed when the corresponding file is migrated.
-lib/**/*.js
-test/**/*.js
-index.js
 README.md

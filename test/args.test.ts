@@ -35,7 +35,6 @@ const testfile = path.join(__dirname, 'assets', 'testvideo-43.avi');
 const testfilewide = path.join(__dirname, 'assets', 'testvideo-169.avi');
 
 describe('Command', () => {
-
   describe('Constructor', () => {
     it('should enable calling the constructor without new', () => {
       assert.ok(Ffmpeg() instanceof Ffmpeg);

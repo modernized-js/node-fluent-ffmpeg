@@ -41,8 +41,8 @@ jobs:
       - name: Test (node:test)
         run: yarn test
 
-  legacy:
-    name: legacy mocha tests (ubuntu, node ${{ matrix.node }})
+  integration:
+    name: integration tests with ffmpeg (ubuntu, node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -68,5 +68,5 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run legacy mocha tests
-        run: yarn test:legacy
+      - name: Test (binary-dependent tests now run instead of skipping)
+        run: yarn test
