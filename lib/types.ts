@@ -104,6 +104,7 @@ export interface SpawnOptions {
   stdoutLines?: number;
   niceness?: number;
   cwd?: string;
+  windowsHide?: boolean;
 }
 
 export type SpawnCallback = (err: Error | null, stdoutRing?: LinesRing) => void;

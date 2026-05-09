@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import type { Readable, Writable } from 'node:stream';
 import utils from './utils.js';
 import type {
   ArgValue,
@@ -55,6 +54,12 @@ function buildInputArgs(inputs: InputState[]): ArgValue[] {
 
 function buildOutputArgs(outputs: OutputState[]): ArgValue[] {
   return outputs.reduce<ArgValue[]>((args, output) => {
+    // The three `as` casts below stay until ArgList becomes generic in
+    // its element type. ArgList.get() returns ArgValue[] (the union of
+    // string | number | FilterSpec); each call site here narrows by
+    // local invariant (sizeFilters store FilterSpec, audioFilters store
+    // string, videoFilters store string). Removing the casts requires
+    // propagating ArgList<T> through every consumer.
     const sizeFilters = utils.makeFilterStrings(output.sizeFilters.get() as FilterSpec[]);
     const audioFilters = output.audioFilters.get() as string[];
     const videoFilters = (output.videoFilters.get() as string[]).concat(sizeFilters);
@@ -86,6 +91,13 @@ function normaliseSpawnArgs(
   processCB?: ProcessCallback | SpawnEndCallback,
   endCB?: SpawnEndCallback,
 ): { options: SpawnOptions; callbacks: SpawnCallbacks } {
+  // The three `as` casts in the branches below stay: each branch has
+  // already disambiguated which positional arg holds the callback (via
+  // the typeof / undefined-checks), but the parameter type is the union
+  // of all callback shapes. Replacing the casts requires either three
+  // overloaded normaliseSpawnArgs signatures or a discriminator-based
+  // input shape, both of which ripple through the _spawnFfmpeg overload
+  // set in lib/types.ts and every internal caller.
   if (typeof options === 'function') {
     // _spawnFfmpeg(args, endCB) — endCB only
     return {
@@ -199,7 +211,13 @@ function pipeInputStream(
   ffmpegProc: ChildProcess,
   emitEnd: (err: ReportingError | null, stdout?: string, stderr?: string) => void,
 ): void {
-  const source = inputStream.source as Readable;
+  // Caller invariant: this is only called when isStream is true, which
+  // implies source is a Readable. The typeof check narrows the union
+  // for TS without an `as` cast.
+  if (typeof inputStream.source === 'string') {
+    throw new TypeError('pipeInputStream: source must be a Readable stream');
+  }
+  const source = inputStream.source;
   source.on('error', (err) => {
     const reportingErr: ReportingError = new Error(`Input stream error: ${err.message}`);
     reportingErr.inputStreamError = err;
@@ -220,7 +238,12 @@ function pipeOutputStream(
   stderrRing: LinesRing,
   emitEnd: (err: ReportingError | null, stdout?: string, stderr?: string) => void,
 ): void {
-  const target = outputStream.target as Writable;
+  // Caller invariant: only invoked when target is a Writable stream;
+  // the typeof check narrows for TS without an `as` cast.
+  if (typeof outputStream.target === 'string' || outputStream.target === undefined) {
+    throw new TypeError('pipeOutputStream: target must be a Writable stream');
+  }
+  const target = outputStream.target;
   ffmpegProc.stdout!.pipe(target, outputStream.pipeopts);
   target.on('close', () => {
     self.logger.debug('Output stream closed, scheduling kill for ffmpeg process');
@@ -258,7 +281,13 @@ function setupTimeout(
 
 async function runFlvtoolOnOutput(flvtool: string, output: OutputState): Promise<void> {
   return new Promise((resolve, reject) => {
-    const target = output.target as string;
+    // flvtool only runs against a file output (caller-side guard); narrow
+    // the union via typeof rather than an `as` cast.
+    if (typeof output.target !== 'string') {
+      reject(new TypeError('runFlvtoolOnOutput: output target must be a file path'));
+      return;
+    }
+    const target = output.target;
     const child = spawn(flvtool, ['-U', target], { windowsHide: true });
     child.on('error', (err) => {
       reject(new Error(`Error running ${flvtool} on ${target}: ${err.message}`));
@@ -343,13 +372,13 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
 
   proto._getArguments = function (this: FfmpegCommandThis): ArgValue[] {
     const fileOutput = this._outputs.some((o) => o.isFile === true);
-    return ([] as ArgValue[]).concat(
-      buildInputArgs(this._inputs),
-      this._global.get(),
-      fileOutput ? ['-y'] : [],
-      this._complexFilters.get(),
-      buildOutputArgs(this._outputs),
-    );
+    return [
+      ...buildInputArgs(this._inputs),
+      ...this._global.get(),
+      ...(fileOutput ? ['-y'] : []),
+      ...this._complexFilters.get(),
+      ...buildOutputArgs(this._outputs),
+    ];
   };
 
   proto._prepare = function (
@@ -401,7 +430,7 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
       return injectStrictExperimental(args, encoders).map(String);
     })().then(
       (args) => callback(null, args),
-      (err) => callback(err as Error),
+      (err: unknown) => callback(err instanceof Error ? err : new Error(String(err))),
     );
 
     if (!readMetadata) startEarlyMetadataProbe(this);
@@ -437,7 +466,7 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
               niceness: this.options.niceness,
               cwd: this.options.cwd,
               windowsHide: true,
-            } as SpawnOptions,
+            },
             (ffmpegProc, stdoutRing, stderrRing) => {
               this.ffmpegProc = ffmpegProc;
               this.emit('start', `ffmpeg ${args.join(' ')}`);
@@ -516,6 +545,10 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
     if (!this.ffmpegProc) {
       this.logger.warn('No running ffmpeg process, cannot send signal');
     } else {
+      // The cast stays: FfmpegCommandThis.kill accepts an arbitrary
+      // string for upstream-compat (`@types/fluent-ffmpeg` typed it as
+      // `string`), but ChildProcess.kill expects `NodeJS.Signals | number`.
+      // Tightening the public parameter type would break consumer code.
       this.ffmpegProc.kill((signal ?? 'SIGKILL') as NodeJS.Signals);
     }
     return this;
