@@ -32,7 +32,10 @@ jobs:
       - name: Lint
         run: yarn lint
 
-      - name: Typecheck / build
+      - name: Typecheck (whole project)
+        run: yarn typecheck
+
+      - name: Build
         run: yarn build
 
       - name: Test (node:test)
