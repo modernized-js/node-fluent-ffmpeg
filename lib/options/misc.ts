@@ -4,7 +4,9 @@ import type { FfmpegCommandPrototype, FfmpegCommandThis } from '../types.js';
 
 const requireFromHere = createRequire(__filename);
 
-type PresetModule = { load?: (cmd: FfmpegCommandThis) => void };
+interface PresetModule {
+  load?: (cmd: FfmpegCommandThis) => void;
+}
 
 function loadPresetByName(this: FfmpegCommandThis, preset: string): void {
   const modulePath = path.join(this.options.presets ?? '', preset);

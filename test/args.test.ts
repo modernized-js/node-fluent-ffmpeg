@@ -1,3 +1,9 @@
+// The 'should enable calling the constructor without new' test below
+// deliberately invokes Ffmpeg() without `new` to validate the factory
+// contract. sonarjs/inconsistent-function-call then flags every other
+// `new Ffmpeg(...)` site in this file as 'inconsistent'. Disable for
+// the whole file rather than litter ~30 inline disables.
+/* eslint-disable sonarjs/inconsistent-function-call */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
@@ -10,8 +16,8 @@ const utils = require('../lib/utils.js');
 const testhelper = require('./helpers.js');
 
 interface FfmpegInstance {
-  _getArguments(): unknown[];
-  _currentOutput: { sizeFilters: { get(): unknown[] }; videoFilters: { get(): unknown[] } };
+  _getArguments: () => unknown[];
+  _currentOutput: { sizeFilters: { get: () => unknown[] }; videoFilters: { get: () => unknown[] } };
 }
 
 function tryGetArgs(cmd: FfmpegInstance): { args?: unknown[]; err?: Error } {
@@ -646,7 +652,7 @@ describe('Command', () => {
     });
 
     it('Should add proper scale filter when withSize was called with a "?" and no aspect ratio is specified', () => {
-      const expectations: Array<[() => unknown, string]> = [
+      const expectations: [() => unknown, string][] = [
         [
           () => new Ffmpeg({ source: testfile, logger: testhelper.logger }).withSize('100x?'),
           'scale=w=100:h=trunc(ow/a/2)*2',

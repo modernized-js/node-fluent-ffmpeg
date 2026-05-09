@@ -79,7 +79,8 @@ function filterOptionsToString(options: FilterSpec['options']): string {
   if (Array.isArray(options)) return `=${options.map(escapeFilterValue).join(':')}`;
   const entries = Object.entries(options);
   if (entries.length === 0) return '';
-  return `=${entries.map(([k, v]) => `${k}=${escapeFilterValue(v)}`).join(':')}`;
+  const body = entries.map(([k, v]) => `${k}=${escapeFilterValue(v)}`).join(':');
+  return `=${body}`;
 }
 
 function filterSpecToString(spec: string | FilterSpec): string {
@@ -102,8 +103,14 @@ function whichCached(name: string, callback: WhichCallback): void {
     return;
   }
   which(name)
-    .then((result) => callback(null, (whichCache[name] = result)))
-    .catch(() => callback(null, (whichCache[name] = '')));
+    .then((result) => {
+      whichCache[name] = result;
+      callback(null, result);
+    })
+    .catch(() => {
+      whichCache[name] = '';
+      callback(null, '');
+    });
 }
 
 function timemarkToSeconds(timemark: string | number): number {

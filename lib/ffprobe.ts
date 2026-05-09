@@ -196,8 +196,14 @@ function applyFfprobe(proto: FfmpegCommandPrototype): void {
       return;
     }
     this._getFfprobePath((pathErr, probePath) => {
-      if (pathErr) return callback(pathErr);
-      if (!probePath) return callback(new Error('Cannot find ffprobe'));
+      if (pathErr) {
+        callback(pathErr);
+        return;
+      }
+      if (!probePath) {
+        callback(new Error('Cannot find ffprobe'));
+        return;
+      }
       runFfprobe(probePath, input, options, callback);
     });
   };

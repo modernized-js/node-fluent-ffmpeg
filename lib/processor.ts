@@ -308,9 +308,13 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
     const maxLines = opts.stdoutLines ?? this.options.stdoutLines ?? 100;
 
     this._getFfmpegPath((err, command) => {
-      if (err) return callbacks.endCB(err);
+      if (err) {
+        callbacks.endCB(err);
+        return;
+      }
       if (!command || command.length === 0) {
-        return callbacks.endCB(new Error('Cannot find ffmpeg'));
+        callbacks.endCB(new Error('Cannot find ffmpeg'));
+        return;
       }
 
       const niced = applyNiceness(command, args, opts.niceness);
@@ -369,7 +373,10 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
           }
           return output.flags.flvmeta;
         });
-        if (!needsFlvtool) return resolve();
+        if (!needsFlvtool) {
+          resolve();
+          return;
+        }
         this._getFlvtoolPath((err) => (err ? reject(err) : resolve()));
       });
     const fetchEncoders = (): Promise<Record<string, { experimental: boolean }>> =>
@@ -413,7 +420,10 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
         };
 
         this._prepare((err, args) => {
-          if (err || !args) return emitEnd(err);
+          if (err || !args) {
+            emitEnd(err);
+            return;
+          }
           this._spawnFfmpeg(
             args,
             {
@@ -441,19 +451,24 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
                 if (stderrRing && /ffmpeg exited with code/.test(spawnErr.message)) {
                   spawnErr.message += `: ${utils.extractError(stderrRing.get())}`;
                 }
-                return emitEnd(spawnErr, stdoutRing?.get(), stderrRing?.get());
+                emitEnd(spawnErr, stdoutRing?.get(), stderrRing?.get());
+                return;
               }
 
               const flvmetaOutputs = this._outputs.filter((o) => o.flags.flvmeta);
               if (flvmetaOutputs.length === 0) {
-                return emitEnd(null, stdoutRing?.get(), stderrRing?.get());
+                emitEnd(null, stdoutRing?.get(), stderrRing?.get());
+                return;
               }
 
               this._getFlvtoolPath((flvErr, flvtool) => {
-                if (flvErr || !flvtool) return emitEnd(flvErr ?? new Error('flvtool not found'));
+                if (flvErr || !flvtool) {
+                  emitEnd(flvErr ?? new Error('flvtool not found'));
+                  return;
+                }
                 Promise.all(flvmetaOutputs.map((o) => runFlvtoolOnOutput(flvtool, o))).then(
                   () => emitEnd(null, stdoutRing?.get(), stderrRing?.get()),
-                  (err: Error) => emitEnd(err),
+                  (flvtoolErr: Error) => emitEnd(flvtoolErr),
                 );
               });
             },

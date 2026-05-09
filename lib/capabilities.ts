@@ -227,7 +227,7 @@ function parseFormatsOutput(stdout: string): Record<string, FormatInfo> {
 }
 
 function findUnavailableFormats(
-  containers: { options: { find(arg: string, count?: number): unknown[] | undefined } }[],
+  containers: { options: { find: (arg: string, count?: number) => unknown[] | undefined } }[],
   formats: Record<string, FormatInfo>,
   predicate: (info: FormatInfo) => boolean,
 ): string[] {
@@ -242,8 +242,8 @@ function findUnavailableFormats(
 
 function findUnavailableCodecs(
   outputs: {
-    audio: { find(arg: string, count?: number): unknown[] | undefined };
-    video: { find(arg: string, count?: number): unknown[] | undefined };
+    audio: { find: (arg: string, count?: number) => unknown[] | undefined };
+    video: { find: (arg: string, count?: number) => unknown[] | undefined };
   }[],
   encoders: Record<string, EncoderInfo>,
   kind: 'audio' | 'video',
@@ -339,7 +339,10 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
       return;
     }
     this._spawnFfmpeg(['-filters'], { captureStdout: true, stdoutLines: 0 }, (err, ring) => {
-      if (err || !ring) return callback(err);
+      if (err || !ring) {
+        callback(err);
+        return;
+      }
       cache.filters = parseFiltersOutput(ring.get());
       callback(null, cache.filters);
     });
@@ -354,7 +357,10 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
       return;
     }
     this._spawnFfmpeg(['-codecs'], { captureStdout: true, stdoutLines: 0 }, (err, ring) => {
-      if (err || !ring) return callback(err);
+      if (err || !ring) {
+        callback(err);
+        return;
+      }
       cache.codecs = parseCodecsOutput(ring.get());
       callback(null, cache.codecs);
     });
@@ -369,7 +375,10 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
       return;
     }
     this._spawnFfmpeg(['-encoders'], { captureStdout: true, stdoutLines: 0 }, (err, ring) => {
-      if (err || !ring) return callback(err);
+      if (err || !ring) {
+        callback(err);
+        return;
+      }
       cache.encoders = parseEncodersOutput(ring.get());
       callback(null, cache.encoders);
     });
@@ -384,7 +393,10 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
       return;
     }
     this._spawnFfmpeg(['-formats'], { captureStdout: true, stdoutLines: 0 }, (err, ring) => {
-      if (err || !ring) return callback(err);
+      if (err || !ring) {
+        callback(err);
+        return;
+      }
       cache.formats = parseFormatsOutput(ring.get());
       callback(null, cache.formats);
     });

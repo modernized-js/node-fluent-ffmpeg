@@ -40,28 +40,28 @@ const testfileaudio3 = path.join(testdir, 'testaudio-three.wav');
 
 interface FfmpegProc {
   pid?: number;
-  on(event: string, cb: (...args: unknown[]) => void): void;
+  on: (event: string, cb: (...args: unknown[]) => void) => void;
 }
 
 interface FfmpegInst extends EventEmitter {
   ffmpegProc: FfmpegProc;
-  usingPreset(name: string): FfmpegInst;
-  saveToFile(p: string): FfmpegInst;
-  takeScreenshots(config: unknown, folder?: string): FfmpegInst;
-  writeToStream(s?: unknown, opts?: unknown): unknown;
-  mergeAdd(p: string): FfmpegInst;
-  mergeToFile(p: string): FfmpegInst;
-  output(p: string): FfmpegInst;
-  withAudioCodec(c: string): FfmpegInst;
-  withVideoCodec(c: string): FfmpegInst;
-  withSize(s: string): FfmpegInst;
-  takeFrames(n: number): FfmpegInst;
-  addOption(...a: unknown[]): FfmpegInst;
-  renice(n: number): FfmpegInst;
-  kill(signal?: string): FfmpegInst;
-  run(): FfmpegInst;
+  usingPreset: (name: string) => FfmpegInst;
+  saveToFile: (p: string) => FfmpegInst;
+  takeScreenshots: (config: unknown, folder?: string) => FfmpegInst;
+  writeToStream: (s?: unknown, opts?: unknown) => unknown;
+  mergeAdd: (p: string) => FfmpegInst;
+  mergeToFile: (p: string) => FfmpegInst;
+  output: (p: string) => FfmpegInst;
+  withAudioCodec: (c: string) => FfmpegInst;
+  withVideoCodec: (c: string) => FfmpegInst;
+  withSize: (s: string) => FfmpegInst;
+  takeFrames: (n: number) => FfmpegInst;
+  addOption: (...a: unknown[]) => FfmpegInst;
+  renice: (n: number) => FfmpegInst;
+  kill: (signal?: string) => FfmpegInst;
+  run: () => FfmpegInst;
   options: { niceness: number };
-  input(p: unknown): FfmpegInst;
+  input: (p: unknown) => FfmpegInst;
 }
 
 let processes: FfmpegProc[] = [];
@@ -526,7 +526,7 @@ describe('Processor', () => {
       });
     }
 
-    const screenshotCases: Array<[string, string, ShotConfig, string[]]> = [
+    const screenshotCases: [string, string, ShotConfig, string[]][] = [
       [
         'should take screenshots from a list of number timemarks',
         'timemarks_num',
@@ -960,7 +960,8 @@ describe('Processor', () => {
   // they require an ffserver instance and a live RTSP/HTTP/RTP setup.
   describe('Remote I/O', () => {
     it.skip('should take input from a RTSP stream', () => {
-      void [testfilewide]; // keep referenced
+      // testfilewide is referenced by future RTSP tests; keep the binding live.
+      [testfilewide].forEach(() => {});
     });
   });
 
