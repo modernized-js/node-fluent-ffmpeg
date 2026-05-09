@@ -1,3 +1,5 @@
+import type { ChildProcess } from 'node:child_process';
+import type EventEmitter from 'node:events';
 import type { Readable, Writable } from 'node:stream';
 
 export interface FilterSpec {
@@ -51,7 +53,7 @@ export interface ProgressReport {
 
 export interface CommandLike {
   emit(event: string, ...args: unknown[]): boolean;
-  _ffprobeData?: { format?: { duration?: string | number } };
+  _ffprobeData?: FfprobeData;
 }
 
 export interface InputState {
@@ -157,26 +159,86 @@ export interface FfprobeData {
 
 export type FfprobeCallback = (err: Error | null, data?: FfprobeData) => void;
 
-export interface FfmpegCommandThis {
+export type ProcessCallback = (
+  proc: ChildProcess,
+  stdoutRing: LinesRing,
+  stderrRing: LinesRing,
+) => void;
+
+export type SpawnEndCallback = (
+  err: Error | null,
+  stdoutRing?: LinesRing,
+  stderrRing?: LinesRing,
+) => void;
+
+export type PrepareCallback = (err: Error | null, args?: string[]) => void;
+
+export interface FfmpegCommandThis extends EventEmitter {
   _currentInput?: InputState;
   _currentOutput?: OutputState;
   _inputs: InputState[];
   _outputs: OutputState[];
   _complexFilters: ArgList;
+  _global: ArgList;
+  _ffprobeData?: FfprobeData;
   options: FfmpegCommandOptions;
-  duration(d: string | number): FfmpegCommandThis;
-  videoFilters(filters: FilterSpec[]): FfmpegCommandThis;
+  logger: Logger;
+  ffmpegProc?: ChildProcess;
+  processTimer?: NodeJS.Timeout;
 
+  // capabilities.ts
+  setFfmpegPath(p: string): this;
+  setFfprobePath(p: string): this;
+  setFlvtoolPath(p: string): this;
+  _forgetPaths(): void;
   _getFfmpegPath(callback: PathCallback): void;
   _getFfprobePath(callback: PathCallback): void;
   _getFlvtoolPath(callback: PathCallback): void;
-  _spawnFfmpeg(args: string[], options: SpawnOptions, callback: SpawnCallback): void;
-  availableFormats(
-    callback: (err: Error | null, formats?: Record<string, FormatInfo>) => void,
+  availableFilters(
+    callback: (err: Error | null, filters?: Record<string, FilterInfo>) => void,
   ): void;
+  availableCodecs(callback: (err: Error | null, codecs?: Record<string, CodecInfo>) => void): void;
   availableEncoders(
     callback: (err: Error | null, encoders?: Record<string, EncoderInfo>) => void,
   ): void;
+  availableFormats(
+    callback: (err: Error | null, formats?: Record<string, FormatInfo>) => void,
+  ): void;
+  _checkCapabilities(callback: (err?: Error | null) => void): void;
+
+  // ffprobe.ts
+  ffprobe(callback: FfprobeCallback): void;
+  ffprobe(index: number, callback: FfprobeCallback): void;
+  ffprobe(options: string[], callback: FfprobeCallback): void;
+  ffprobe(index: number, options: string[], callback: FfprobeCallback): void;
+
+  // processor.ts
+  _spawnFfmpeg(
+    args: string[],
+    options: SpawnOptions,
+    processCB: ProcessCallback,
+    endCB: SpawnEndCallback,
+  ): void;
+  _spawnFfmpeg(args: string[], options: SpawnOptions, endCB: SpawnEndCallback): void;
+  _spawnFfmpeg(args: string[], endCB: SpawnEndCallback): void;
+  _getArguments(): (string | number)[];
+  _prepare(callback: PrepareCallback, readMetadata?: boolean): void;
+  run(): this;
+  exec(): this;
+  execute(): this;
+  renice(niceness?: number): this;
+  kill(signal?: string): this;
+
+  // options/* (chainable methods called from option modules and recipes)
+  duration(d: string | number): this;
+  videoFilters(filters: FilterSpec[]): this;
+  output(target?: string | Writable, pipeopts?: Record<string, unknown>): this;
+  seek(s: string | number): this;
+  seekInput(s: string | number): this;
+  size(s: string): this;
+  complexFilter(spec: string | FilterSpec | (string | FilterSpec)[], map?: string | string[]): this;
+  frames(count: number): this;
+  map(spec: string): this;
 }
 
 export type FfmpegCommandPrototype = Record<string, unknown>;

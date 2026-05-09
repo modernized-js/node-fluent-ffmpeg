@@ -31,7 +31,6 @@
     "node": ">=22"
   },
   "dependencies": {
-    "async": "^0.2.9",
     "which": "^7.0.0"
   },
   "devDependencies": {
