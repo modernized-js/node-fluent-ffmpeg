@@ -22,7 +22,56 @@ yarn add @modernized/fluent-ffmpeg
 npm install @modernized/fluent-ffmpeg
 ```
 
+## Migrating from `fluent-ffmpeg` + `@types/fluent-ffmpeg`
 
+The runtime API and the public type surface track the original
+[`@types/fluent-ffmpeg`](https://www.npmjs.com/package/@types/fluent-ffmpeg)
+on DefinitelyTyped. The same chainable methods, the same
+`FfprobeData` / `FfprobeStream` / `FfprobeFormat` shapes, the same
+`on()` event-listener overloads. Drop-in replace:
+
+```diff
+- "fluent-ffmpeg": "^2.1.3",
+- "@types/fluent-ffmpeg": "^2.1.28",
++ "@modernized/fluent-ffmpeg": "^0.1.1",
+```
+
+```diff
+- import ffmpeg from "fluent-ffmpeg";
++ import ffmpeg from "@modernized/fluent-ffmpeg";
+```
+
+There is **one type-side difference** to be aware of: namespace-style
+type access (`ffmpeg.FfmpegCommand`, `ffmpeg.FfprobeData`, …) does
+**not** work in this fork. Upstream merges `declare function Ffmpeg`
+with `declare namespace Ffmpeg { … }`; this fork exports the runtime
+factory as `const FfmpegCommand: FfmpegCommandStatic`, and TypeScript
+does not allow a `const` declaration to merge with a same-named
+namespace. Use `ReturnType<typeof ffmpeg>` for the instance type:
+
+```ts
+type FfmpegCommand = ReturnType<typeof ffmpeg>;
+const cmd: FfmpegCommand = ffmpeg("input.mp4");
+```
+
+The full per-field shape of `FfprobeData` / `FfprobeStream` /
+`FfprobeFormat` (and the rest of the upstream public types) is
+declared internally and used at every call site — your consumer code
+that relied on those shapes against `@types/fluent-ffmpeg` will keep
+type-checking unchanged. Type inference on event-listener arguments
+works exactly like upstream — no manual annotation needed. The package's `.d.ts` declares
+typed overloads for `start` / `progress` / `stderr` / `codecData` /
+`error` / `filenames` / `end`:
+
+```ts
+ffmpeg("input.mp4")
+  .on("start", (cmdLine) => {        // cmdLine: string
+    console.log("ffmpeg:", cmdLine);
+  })
+  .on("error", (err, stdout, stderr) => {  // err: Error, stdout/stderr: string | null
+    console.error(err);
+  });
+```
 
 ## Usage
 
