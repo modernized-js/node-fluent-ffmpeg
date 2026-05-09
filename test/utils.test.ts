@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import utils from '../lib/utils.js';
-import type { CodecState, ProgressReport } from '../lib/types.js';
+import type { CodecState, FfprobeData, ProgressReport } from '../lib/types.js';
 
 describe('utils.isWindows', () => {
   it('is a boolean reflecting the host platform', () => {
@@ -673,15 +673,19 @@ describe('utils.extractProgress', () => {
   interface MockCommand {
     progresses: ProgressReport[];
     emit: (event: string, ...args: unknown[]) => boolean;
-    _ffprobeData?: {
-      format: { duration?: string | number };
-      streams: never[];
-      chapters: never[];
-    };
+    _ffprobeData?: FfprobeData;
   }
 
   function makeCommand(duration?: string | number): MockCommand {
     const progresses: ProgressReport[] = [];
+    // ffprobe-style format payload built as a loose record so we can
+    // exercise the legacy "string-numeric" duration alongside the
+    // numeric one without violating FfprobeFormat's typed `duration`.
+    const buildFfprobeData = (): FfprobeData | undefined => {
+      if (duration === undefined) return undefined;
+      const formatRecord: Record<string, unknown> = { duration };
+      return { format: formatRecord, streams: [], chapters: [] };
+    };
     return {
       progresses,
       emit: (event, ...args) => {
@@ -690,14 +694,7 @@ describe('utils.extractProgress', () => {
         }
         return true;
       },
-      _ffprobeData:
-        duration === undefined
-          ? undefined
-          : {
-              format: { duration },
-              streams: [],
-              chapters: [],
-            },
+      _ffprobeData: buildFfprobeData(),
     };
   }
 

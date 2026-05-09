@@ -67,8 +67,15 @@ describe('pickBiggestVideoStream', () => {
   });
 
   it('coerces width/height strings via Number() (ffprobe legacy "string numbers")', () => {
-    const small = videoStream(0, 0, { width: '320', height: '240' });
-    const big = videoStream(0, 0, { width: '1920', height: '1080' });
+    // FfprobeStream's typed width/height are number, but ffprobe sometimes
+    // emits string numerics; build the fixture via a loose record to
+    // exercise the runtime Number() coerce path without violating types.
+    const stringRaw = (w: string, h: string): FfprobeStream => {
+      const raw: Record<string, unknown> = { codec_type: 'video', width: w, height: h };
+      return raw;
+    };
+    const small = stringRaw('320', '240');
+    const big = stringRaw('1920', '1080');
     const picked = pickBiggestVideoStream(meta([small, big]));
     assert.equal(picked, big);
   });

@@ -37,7 +37,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "which": "^7.0.0"
+    "which": "^6.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -52,6 +52,7 @@
     "globals": "^17.6.0",
     "jsdoc": "^4.0.5",
     "prettier": "^3.4.2",
+    "tsd": "^0.33.0",
     "tsx": "^4.19.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.20.0"
@@ -63,6 +64,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn build",
-    "test": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\""
+    "test": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "test:types": "tsd"
+  },
+  "tsd": {
+    "directory": "test-d"
   }
 }
