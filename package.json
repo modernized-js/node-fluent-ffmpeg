@@ -1,7 +1,7 @@
 {
   "name": "@modernized/fluent-ffmpeg",
-  "version": "3.0.0-pre.0",
-  "description": "A fluent API to FFMPEG (http://www.ffmpeg.org) — modernized fork",
+  "version": "0.1.0",
+  "description": "A fluent API to FFMPEG (http://www.ffmpeg.org) — modernized fork in TypeScript",
   "keywords": [
     "ffmpeg"
   ],

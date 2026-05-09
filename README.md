@@ -1,30 +1,19 @@
-# Fluent ffmpeg-API for node.js
+# @modernized/fluent-ffmpeg
 
-[![Coverage Status](https://coveralls.io/repos/github/fluent-ffmpeg/node-fluent-ffmpeg/badge.svg?branch=master)](https://coveralls.io/github/fluent-ffmpeg/node-fluent-ffmpeg?branch=master)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffluent-ffmpeg%2Fnode-fluent-ffmpeg.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffluent-ffmpeg%2Fnode-fluent-ffmpeg?ref=badge_shield)
-
-## Fluent-ffmpeg is now deprecated
-
-This library is **no longer maintained** and no longer works properly with recent ffmpeg versions. Use it as your own risk, this repository is readonly and does not accept issues or PRs.
+> A maintained fork of [`fluent-ffmpeg`](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg), rewritten in TypeScript and re-published under the `@modernized` scope. Upstream went read-only in 2024; this fork keeps the fluent ffmpeg-CLI wrapper alive on modern Node (>= 22), modern toolchain (ESLint 10, TypeScript 6, Prettier), and Node's native `node:test` runner.
 
 ## About
 
-This library abstracts the complex command-line usage of ffmpeg into a fluent, easy to use node.js module. In order to be able to use this module, make sure you have [ffmpeg](http://www.ffmpeg.org) installed on your system (including all necessary encoding libraries like libmp3lame or libx264).
-
-> This is the documentation for fluent-ffmpeg 2.x.
-> You can still access the code and documentation for fluent-ffmpeg 1.7 [here](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/tree/1.x).
+This library abstracts the complex command-line usage of ffmpeg into a fluent, easy to use Node.js module. In order to be able to use this module, make sure you have [ffmpeg](http://www.ffmpeg.org) installed on your system (including all necessary encoding libraries like libmp3lame or libx264).
 
 ## Installation
 
-Via npm:
+Via yarn / npm:
 
 ```sh
-$ npm install fluent-ffmpeg
-```
-
-Or as a submodule:
-```sh
-$ git submodule add git://github.com/schaermu/node-fluent-ffmpeg.git vendor/fluent-ffmpeg
+yarn add @modernized/fluent-ffmpeg
+# or
+npm install @modernized/fluent-ffmpeg
 ```
 
 
