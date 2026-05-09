@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { access, unlink, rmdir, stat, readdir } from 'node:fs/promises';
 import stream from 'node:stream';
 import EventEmitter from 'node:events';
-import { execSync } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
@@ -187,10 +187,30 @@ describe('Processor', () => {
       });
     });
 
-    // Skipped in node:test: legacy spawned `node -e "require('.')..."` which
-    // depends on the published dist/ being built. Worth re-imagining as a
-    // distinct ESM/CJS smoke test once Phase 8 wires up release smoke tests.
-    it.skip('should not keep node process running on completion', () => {});
+    // Process-leak regression: spawn a fresh `node` that requires the built
+    // dist entrypoint and runs ffmpeg to completion; if the parent never exits
+    // (because of an uncleared timer or open handle), exec's 1s timeout kills
+    // it and reports an error. Skips when dist/ hasn't been built (run after
+    // `yarn build`); CI always builds before running tests.
+    const distEntry = path.resolve(__dirname, '..', 'dist', 'index.js');
+    const distExists = fs.existsSync(distEntry);
+    const leakIt = ffmpegInPath && distExists ? it : it.skip;
+    leakIt('should not keep node process running on completion', async () => {
+      const script = [
+        `var ffmpeg = require(${JSON.stringify(distEntry)});`,
+        `ffmpeg(${JSON.stringify(testfilebig)}, { timeout: 60 })`,
+        `  .addOption('-t', '1')`,
+        `  .addOption('-f', 'null')`,
+        `  .saveToFile('/dev/null');`,
+      ].join('\n');
+      await new Promise<void>((resolve, reject) => {
+        exec(
+          `node -e "${script.replace(/\n/g, ' ').replace(/"/g, '\\"')}"`,
+          { timeout: 1000 },
+          (err) => (err ? reject(err) : resolve()),
+        );
+      });
+    });
 
     ffmpegIt('should kill the process with .kill', async () => {
       const testFile = path.join(testdir, 'testProcessKill.avi');
