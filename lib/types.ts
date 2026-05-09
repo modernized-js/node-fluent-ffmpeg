@@ -95,6 +95,68 @@ export interface FfmpegCommandOptions {
   [key: string]: unknown;
 }
 
+export type PathCallback = (err: Error | null, path?: string) => void;
+
+export interface SpawnOptions {
+  captureStdout?: boolean;
+  stdoutLines?: number;
+  niceness?: number;
+  cwd?: string;
+}
+
+export type SpawnCallback = (err: Error | null, stdoutRing?: LinesRing) => void;
+
+export interface FilterInfo {
+  description: string;
+  input: 'audio' | 'video' | 'none';
+  multipleInputs: boolean;
+  output: 'audio' | 'video' | 'none';
+  multipleOutputs: boolean;
+}
+
+export interface CodecInfo {
+  type?: 'video' | 'audio' | 'subtitle';
+  description: string;
+  canDecode: boolean;
+  canEncode: boolean;
+  drawHorizBand?: boolean;
+  directRendering?: boolean;
+  weirdFrameTruncation?: boolean;
+  intraFrameOnly?: boolean;
+  isLossy?: boolean;
+  isLossless?: boolean;
+}
+
+export interface EncoderInfo {
+  type?: 'video' | 'audio' | 'subtitle';
+  description: string;
+  frameMT: boolean;
+  sliceMT: boolean;
+  experimental: boolean;
+  drawHorizBand: boolean;
+  directRendering: boolean;
+}
+
+export interface FormatInfo {
+  description: string;
+  canDemux: boolean;
+  canMux: boolean;
+}
+
+export interface FfprobeStream {
+  [key: string]: unknown;
+  tags?: Record<string, unknown>;
+  disposition?: Record<string, unknown>;
+}
+
+export interface FfprobeData {
+  streams: FfprobeStream[];
+  format: FfprobeStream;
+  chapters: FfprobeStream[];
+}
+
+export type FfprobeCallback = (err: Error | null, data?: FfprobeData) => void;
+
 export interface FfmpegCommandThis {
   _currentInput?: InputState;
   _currentOutput?: OutputState;
@@ -104,6 +166,17 @@ export interface FfmpegCommandThis {
   options: FfmpegCommandOptions;
   duration(d: string | number): FfmpegCommandThis;
   videoFilters(filters: FilterSpec[]): FfmpegCommandThis;
+
+  _getFfmpegPath(callback: PathCallback): void;
+  _getFfprobePath(callback: PathCallback): void;
+  _getFlvtoolPath(callback: PathCallback): void;
+  _spawnFfmpeg(args: string[], options: SpawnOptions, callback: SpawnCallback): void;
+  availableFormats(
+    callback: (err: Error | null, formats?: Record<string, FormatInfo>) => void,
+  ): void;
+  availableEncoders(
+    callback: (err: Error | null, encoders?: Record<string, EncoderInfo>) => void,
+  ): void;
 }
 
 export type FfmpegCommandPrototype = Record<string, unknown>;
