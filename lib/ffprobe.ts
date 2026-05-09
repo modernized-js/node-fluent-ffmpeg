@@ -120,8 +120,10 @@ function pickInput(
 // `(err: any, data: FfprobeData) => void` — i.e. non-optional `data`.
 // At runtime the convention is to pass an empty FfprobeData shape on
 // error paths so callers that dereference `data` after a missed `err`
-// check do not crash. Internal callers pass this constant.
-const EMPTY_FFPROBE_DATA: FfprobeData = { streams: [], format: {}, chapters: [] };
+// check do not crash. A factory (not a shared constant) keeps each
+// failed call's payload isolated — a consumer that mutates the
+// returned object cannot poison subsequent failures.
+const emptyFfprobeData = (): FfprobeData => ({ streams: [], format: {}, chapters: [] });
 
 interface SpawnState {
   stdout: string;
@@ -159,7 +161,7 @@ function runFfprobe(
     if (state.exitError) {
       const finalErr = state.exitError;
       if (state.stderr) finalErr.message += `\n${state.stderr}`;
-      handleCallback(finalErr, EMPTY_FFPROBE_DATA);
+      handleCallback(finalErr, emptyFfprobeData());
       return;
     }
     const data = parseFfprobeOutput(state.stdout);
@@ -175,7 +177,7 @@ function runFfprobe(
   if (input.isStream) {
     child.stdin.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code && stdinIgnorableErrors.has(err.code)) return;
-      handleCallback(err, EMPTY_FFPROBE_DATA);
+      handleCallback(err, emptyFfprobeData());
     });
     child.stdin.on('close', () => {
       const stream = input.source as Readable;
@@ -185,7 +187,7 @@ function runFfprobe(
     (input.source as Readable).pipe(child.stdin);
   }
 
-  child.on('error', (err) => handleCallback(err, EMPTY_FFPROBE_DATA));
+  child.on('error', (err) => handleCallback(err, emptyFfprobeData()));
   child.on('exit', (code, signal) => {
     state.processExited = true;
     if (code) tryFinish(new Error(`ffprobe exited with code ${code}`));
@@ -213,16 +215,16 @@ function applyFfprobe(proto: FfmpegCommandPrototype): void {
     const { index, options, callback } = parseFfprobeArgs(args);
     const { input, error } = pickInput(index, this._currentInput, this._inputs);
     if (error || !input) {
-      callback(error!, EMPTY_FFPROBE_DATA);
+      callback(error!, emptyFfprobeData());
       return;
     }
     this._getFfprobePath((pathErr, probePath) => {
       if (pathErr) {
-        callback(pathErr, EMPTY_FFPROBE_DATA);
+        callback(pathErr, emptyFfprobeData());
         return;
       }
       if (!probePath) {
-        callback(new Error('Cannot find ffprobe'), EMPTY_FFPROBE_DATA);
+        callback(new Error('Cannot find ffprobe'), emptyFfprobeData());
         return;
       }
       runFfprobe(probePath, input, options, callback);
