@@ -162,10 +162,14 @@ describe('Processor', () => {
     ffmpegIt('should kill the process on timeout', async () => {
       const testFile = path.join(testdir, 'testProcessKillTimeout.avi');
       files.push(testFile);
+      // Sub-second timeout: a 1-second budget was racy on fast hardware
+      // (M-series Mac could finish a divx encode of testfilebig before the
+      // timer fired and emit `end` instead of `error`). 100 ms is tight
+      // enough that no platform completes the encode in that window.
       const command = makeCommand({
         source: testfilebig,
         logger: testhelper.logger,
-        timeout: 1,
+        timeout: 0.1,
       });
 
       await new Promise<void>((resolve, reject) => {
