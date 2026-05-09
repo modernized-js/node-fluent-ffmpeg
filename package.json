@@ -14,11 +14,11 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/isamu/node-fluent-ffmpeg/issues"
+    "url": "https://github.com/modernized-js/node-fluent-ffmpeg/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/isamu/node-fluent-ffmpeg.git"
+    "url": "git+https://github.com/modernized-js/node-fluent-ffmpeg.git"
   },
   "main": "index.js",
   "files": [

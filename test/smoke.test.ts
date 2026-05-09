@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
+const require = createRequire(__filename);
 
 test('package entrypoint loads', () => {
   const ffmpeg = require('../index.js');
