@@ -889,6 +889,52 @@ describe('Processor', () => {
           .writeToStream(outstream);
       });
     });
+
+    // Regression: on Windows the legacy 20ms grace between target.on('close')
+    // and ffmpegProc.on('exit') consistently lost the race, surfacing a
+    // spurious 'Output stream closed' error after a successful run.
+    // The fix re-checks ffmpegProc.exitCode/killed inside the grace timeout
+    // and bumps the grace to 250ms; this test pins both behaviours by
+    // running a complete pipe-to-stream encode and asserting that 'end'
+    // fires without a trailing 'error'.
+    ffmpegIt(
+      'should not emit "Output stream closed" after a successful pipe completion',
+      async () => {
+        const sink = new stream.PassThrough();
+        const chunks: Buffer[] = [];
+        sink.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+        const command = makeCommand({ source: testfile, logger: testhelper.logger })
+          .takeFrames(5)
+          .withVideoCodec('mjpeg')
+          .addOption('-f', 'image2pipe');
+
+        let endFired = false;
+        let trailingError: Error | undefined;
+
+        await new Promise<void>((resolve, reject) => {
+          command
+            .on('error', (err: Error) => {
+              if (endFired) trailingError = err;
+              else reject(err);
+            })
+            .on('end', () => {
+              endFired = true;
+            })
+            .writeToStream(sink);
+          sink.on('end', () => resolve());
+        });
+
+        // Wait past the OUTPUT_STREAM_GRACE_MS window so a stale timeout
+        // body would have fired an 'error' by now if the guard were broken.
+        const POST_END_QUIET_MS = 400;
+        await new Promise<void>((resolve) => setTimeout(resolve, POST_END_QUIET_MS));
+
+        assert.equal(endFired, true, '"end" event must fire on a successful pipe');
+        assert.equal(trailingError, undefined, 'no "error" event must fire after "end"');
+        assert.ok(chunks.length > 0, 'sink must receive at least one ffmpeg chunk');
+      },
+    );
   });
 
   describe('Outputs', () => {
