@@ -1,7 +1,5 @@
-import { describe, it, before } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { exec } from 'node:child_process';
-import { access } from 'node:fs/promises';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -29,26 +27,14 @@ function getSizeFilters(cmd: FfmpegInstance): string[] {
   return sizes.concat(cmd._currentOutput.videoFilters.get() as string[]);
 }
 
-let testfile: string;
-let testfilewide: string;
+// These tests only exercise FfmpegCommand argument-list generation; they don't
+// spawn ffmpeg or read the input file, so the legacy 'which ffmpeg' / fs.exists
+// before-hook is gone. The testfile constants stay because the FfmpegCommand
+// constructor records `source` as an opaque string.
+const testfile = path.join(__dirname, 'assets', 'testvideo-43.avi');
+const testfilewide = path.join(__dirname, 'assets', 'testvideo-169.avi');
 
 describe('Command', () => {
-  before(async () => {
-    testfile = path.join(__dirname, 'assets', 'testvideo-43.avi');
-    testfilewide = path.join(__dirname, 'assets', 'testvideo-169.avi');
-
-    await new Promise<void>((resolve, reject) => {
-      exec(testhelper.getFfmpegCheck(), (err) => {
-        if (err) {
-          return reject(new Error('cannot run test without ffmpeg installed, aborting test...'));
-        }
-        access(testfile).then(
-          () => resolve(),
-          () => reject(new Error(`test video file does not exist, check path (${testfile})`)),
-        );
-      });
-    });
-  });
 
   describe('Constructor', () => {
     it('should enable calling the constructor without new', () => {
