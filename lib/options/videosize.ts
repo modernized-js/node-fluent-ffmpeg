@@ -61,8 +61,11 @@ function partialSizeFilters(
   const heightSpec = fixedHeight ? Number(fixedHeight[1]) : undefined;
 
   if (data.aspect !== undefined) {
-    const w = Math.round((widthSpec ?? heightSpec! * data.aspect) / 2) * 2;
-    const h = Math.round((heightSpec ?? widthSpec! / data.aspect) / 2) * 2;
+    // Legacy double-rounds: round the cross-axis computation, then round to a multiple of 2.
+    const widthRaw = widthSpec ?? Math.round(heightSpec! * data.aspect);
+    const heightRaw = heightSpec ?? Math.round(widthSpec! / data.aspect);
+    const w = Math.round(widthRaw / 2) * 2;
+    const h = Math.round(heightRaw / 2) * 2;
     return fixedSizeFilters(w, h, data.pad ?? false);
   }
 
