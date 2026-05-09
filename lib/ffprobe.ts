@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import type { Readable } from 'node:stream';
 import type {
   FfmpegCommandPrototype,
   FfmpegCommandThis,
@@ -57,6 +56,12 @@ function parseFfprobeOutput(out: string): FfprobeData {
   return data;
 }
 
+function assertsRecord(value: unknown): asserts value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('expected a Record bag, got something else');
+  }
+}
+
 function liftLegacyKeys(
   target: FfprobeBlockBody,
   prefix: RegExp,
@@ -65,7 +70,10 @@ function liftLegacyKeys(
   const matchingKeys = Object.keys(target).filter((k) => prefix.test(k));
   if (matchingKeys.length === 0) return;
   target[dest] ??= {};
-  const bag = target[dest] as Record<string, unknown>;
+  const bag = target[dest];
+  // ??= just guaranteed `bag` is at least `{}`; narrow the unknown
+  // index-signature value to Record<string, unknown> via an assertion.
+  assertsRecord(bag);
   const sliceFrom = dest === 'tags' ? 4 : 12;
   matchingKeys.forEach((key) => {
     bag[key.slice(sliceFrom)] = target[key];
@@ -89,6 +97,13 @@ interface FfprobeArgs {
 }
 
 function parseFfprobeArgs(args: unknown[]): FfprobeArgs {
+  // The three `as` casts below stay: the FfmpegCommand.ffprobe overloads
+  // (and the static Ffmpeg.ffprobe) declare the parameter shapes, so by
+  // contract `args[length-1]` is an `FfprobeCallback`, and the 3-arg form
+  // is `(index: number, options: string[], cb)`. Replacing the casts
+  // with runtime typeof / Array.isArray throws would change the failure
+  // mode for malformed callers (silent drop vs. early TypeError) without
+  // a behavioural justification — keep the trust-the-overload pattern.
   const callback = args[args.length - 1] as FfprobeCallback;
   let index: number | null = null;
   let options: string[] = [];
@@ -169,22 +184,26 @@ function runFfprobe(
     handleCallback(null, data);
   };
 
-  const src = input.isStream ? 'pipe:0' : (input.source as string);
+  // `input.isStream` flag alone doesn't narrow the source union for TS;
+  // the typeof check picks up the string side without an `as` cast.
+  const src = !input.isStream && typeof input.source === 'string' ? input.source : 'pipe:0';
   const child = spawn(probePath, ['-show_streams', '-show_format', ...options, src], {
     windowsHide: true,
   });
 
-  if (input.isStream) {
+  // isStream=true implies source is Readable (caller-side contract);
+  // the typeof check narrows the union for TS without an `as` cast.
+  if (input.isStream && typeof input.source !== 'string') {
+    const source = input.source;
     child.stdin.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code && stdinIgnorableErrors.has(err.code)) return;
       handleCallback(err, emptyFfprobeData());
     });
     child.stdin.on('close', () => {
-      const stream = input.source as Readable;
-      stream.pause();
-      stream.unpipe(child.stdin);
+      source.pause();
+      source.unpipe(child.stdin);
     });
-    (input.source as Readable).pipe(child.stdin);
+    source.pipe(child.stdin);
   }
 
   child.on('error', (err) => handleCallback(err, emptyFfprobeData()));
