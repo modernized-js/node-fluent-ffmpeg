@@ -8,18 +8,19 @@ type PresetModule = { load?: (cmd: FfmpegCommandThis) => void };
 
 function loadPresetByName(this: FfmpegCommandThis, preset: string): void {
   const modulePath = path.join(this.options.presets ?? '', preset);
-  let mod: PresetModule;
+  // Match legacy: a single try/catch wraps both the require AND the load() call,
+  // so any failure surfaces as 'preset <path> could not be loaded: ...'.
   try {
-    mod = requireFromHere(modulePath) as PresetModule;
+    const mod = requireFromHere(modulePath) as PresetModule;
+    if (typeof mod.load !== 'function') {
+      throw new Error(`preset ${modulePath} has no load() function`);
+    }
+    mod.load(this);
   } catch (err) {
     throw new Error(`preset ${modulePath} could not be loaded: ${(err as Error).message}`, {
       cause: err,
     });
   }
-  if (typeof mod.load !== 'function') {
-    throw new Error(`preset ${modulePath} has no load() function`);
-  }
-  mod.load(this);
 }
 
 function applyMiscOptions(proto: FfmpegCommandPrototype): void {

@@ -188,7 +188,8 @@ function applyVideoSizeOptions(proto: FfmpegCommandPrototype): void {
         } else {
           enabled = pad ?? true;
         }
-        const value: string | false = enabled ? (actualColor ?? 'black') : false;
+        // Match legacy: empty-string color falls back to 'black' (uses ||, not ??).
+        const value: string | false = enabled ? actualColor || 'black' : false;
         applySizeFilters(
           this._currentOutput!,
           createSizeFilters(this._currentOutput!, 'pad', value),
