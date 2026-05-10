@@ -9,13 +9,13 @@ const Ffmpeg = require('../index.js');
 const testhelper = require('./helpers.js');
 
 interface FfmpegInst {
-  on(event: string, listener: (...args: unknown[]) => unknown): FfmpegInst;
-  emit(event: string, ...args: unknown[]): boolean;
-  saveToFile(p: string): FfmpegInst;
-  takeFrames(n: number): FfmpegInst;
-  withVideoCodec(c: string): FfmpegInst;
-  withAudioCodec(c: string): FfmpegInst;
-  withSize(s: string): FfmpegInst;
+  on: (event: string, listener: (...args: unknown[]) => unknown) => FfmpegInst;
+  emit: (event: string, ...args: unknown[]) => boolean;
+  saveToFile: (p: string) => FfmpegInst;
+  takeFrames: (n: number) => FfmpegInst;
+  withVideoCodec: (c: string) => FfmpegInst;
+  withAudioCodec: (c: string) => FfmpegInst;
+  withSize: (s: string) => FfmpegInst;
 }
 
 const ffmpegInPath = testhelper.isCommandInPath('ffmpeg');
