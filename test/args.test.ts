@@ -259,6 +259,28 @@ describe('Command', () => {
       assert.throws(() => new Ffmpeg().loop(), /No input specified/);
       assert.throws(() => new Ffmpeg().inputOptions('-anoption'), /No input specified/);
     });
+
+    // Integration regression for issue #42 / upstream #1151. Walks the
+    // full inputOptions → _getArguments path so a future refactor of
+    // the variadic-shape adapter cannot reintroduce the value-split bug
+    // without failing this assertion.
+    it('preserves a header value with embedded spaces through inputOptions → argv', () => {
+      const { args, err } = tryGetArgs(
+        new Ffmpeg({ source: testfile, logger: testhelper.logger }).inputOptions([
+          '-headers',
+          'Cookie: session=abc xyz',
+        ]),
+      );
+      testhelper.logArgError(err);
+      assert.ok(!err);
+      const headersIdx = args!.indexOf('-headers');
+      assert.ok(headersIdx > -1, 'argv must contain -headers');
+      assert.equal(
+        args![headersIdx + 1],
+        'Cookie: session=abc xyz',
+        'header value must survive verbatim — not split on the embedded space',
+      );
+    });
   });
 
   describe('withVideoCodec', () => {

@@ -70,4 +70,19 @@ describe('flattenOptions (issue #42 — array entries with embedded spaces)', ()
       'drawtext=text=Hello World:fontsize=24',
     ]);
   });
+
+  it('preserves entries with multiple consecutive spaces (not a 2-part split)', () => {
+    // 'Cookie:  a=b'.split(' ') has length 3 (the empty middle slot
+    // counts), so the heuristic refuses to split. Verbatim survival is
+    // what we want for any value with weird whitespace.
+    assert.deepEqual(flattenOptions([['-headers', 'Cookie:  a=b']]), ['-headers', 'Cookie:  a=b']);
+  });
+
+  it('trailing-space flag entry splits into [flag, ""] (parity with legacy behaviour)', () => {
+    // '-flag '.split(' ') is ['-flag', ''] — length 2, parts[0] starts
+    // with '-', so it splits and emits an empty argv token. Old code
+    // did the same; pin this to catch any future regression in the
+    // length-vs-startsWith ordering.
+    assert.deepEqual(flattenOptions([['-flag ']]), ['-flag', '']);
+  });
 });
