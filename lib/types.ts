@@ -319,6 +319,8 @@ export interface FfmpegCommandThis extends EventEmitter {
   native(): this;
   setStartTime(seek: string | number): this;
   seekInput(seek: string | number): this;
+  setInputDuration(duration: string | number): this;
+  durationInput(duration: string | number): this;
   loop(duration?: string | number): this;
 
   // options/audio
