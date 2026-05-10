@@ -1,4 +1,5 @@
 import { platform } from 'node:os';
+import { execSync } from 'node:child_process';
 
 interface Logger {
   debug(arg: string): void;
@@ -10,6 +11,21 @@ interface Logger {
 function getFfmpegCheck(): string {
   if (!/win(32|64)/.test(platform())) return 'which ffmpeg';
   return 'where /Q ffmpeg';
+}
+
+function isCommandInPath(cmd: string): boolean {
+  try {
+    const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
+    // eslint-disable-next-line sonarjs/os-command -- PATH probe: shell builtin with our own cmd arg, used only to skip ffmpeg-dependent tests
+    execSync(probe, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function toError(e: unknown): Error {
+  return e instanceof Error ? e : new Error(String(e));
 }
 
 const COV = process.env.FLUENTFFMPEG_COV === '1';
@@ -74,5 +90,13 @@ function logOutput(stdout?: string, stderr?: string): void {
   }
 }
 
-const helpers = { getFfmpegCheck, logger, logArgError, logError, logOutput };
+const helpers = {
+  getFfmpegCheck,
+  isCommandInPath,
+  logger,
+  logArgError,
+  logError,
+  logOutput,
+  toError,
+};
 export = helpers;

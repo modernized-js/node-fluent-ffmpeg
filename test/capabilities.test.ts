@@ -1,7 +1,6 @@
 import { describe, it, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
@@ -10,21 +9,11 @@ const testhelper = require('./helpers.js');
 
 const PATH_DELIMITER = path.delimiter;
 
-function isCommandInPath(cmd: string): boolean {
-  try {
-    const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
-    execSync(probe, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const ffmpegInPath = isCommandInPath('ffmpeg');
-const ffprobeInPath = isCommandInPath('ffprobe');
+const ffmpegInPath = testhelper.isCommandInPath('ffmpeg');
+const ffprobeInPath = testhelper.isCommandInPath('ffprobe');
 const flvtoolInPath =
   process.env.FLVTOOL2_PRESENT !== 'no' &&
-  (isCommandInPath('flvmeta') || isCommandInPath('flvtool2'));
+  (testhelper.isCommandInPath('flvmeta') || testhelper.isCommandInPath('flvtool2'));
 
 const ffmpegIt = ffmpegInPath ? it : it.skip;
 const ffprobeIt = ffprobeInPath ? it : it.skip;
@@ -145,7 +134,7 @@ describe('Capabilities', () => {
             assert.match(err!.message, pattern);
             resolve();
           } catch (e) {
-            reject(e as Error);
+            reject(testhelper.toError(e));
           }
         });
       });
@@ -234,10 +223,11 @@ describe('Capabilities', () => {
               assert.match(err.message, /Output format invalid-output-format is not available/);
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .toFormat('invalid-output-format')
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- negative-path: ffmpeg fails before any write
           .saveToFile('/tmp/will-not-be-created.mp4');
       });
     });

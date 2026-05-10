@@ -128,7 +128,9 @@ describe('normaliseScreenshotConfig', () => {
   });
 
   it('honours the folder argument when the config object lacks one', () => {
+    // eslint-disable-next-line sonarjs/publicly-writable-directories -- pure round-trip test: string is never used as a real fs path
     const config = normaliseScreenshotConfig({ count: 1 }, '/tmp/shots');
+    // eslint-disable-next-line sonarjs/publicly-writable-directories -- same: comparison literal, no fs access in this test
     assert.equal(config.folder, '/tmp/shots');
   });
 

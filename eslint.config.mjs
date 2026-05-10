@@ -25,7 +25,7 @@ export default [
     },
   },
   {
-    files: ['**/*.ts', '**/*.mts'],
+    files: ['**/*.ts', '**/*.mts', 'test/**/*.ts'],
     languageOptions: {
       sourceType: 'module',
       globals: { ...globals.es2021, ...globals.node },
@@ -181,26 +181,6 @@ export default [
       'security/detect-object-injection': 'off',
       'security/detect-non-literal-regexp': 'off',
       'security/detect-child-process': 'off', // spawn(ffmpeg, args) is the library's purpose
-    },
-  },
-  // Tests can be a little looser — they build mock objects, use Promise constructors
-  // for callback-shaped APIs, and mostly handle expected child-process exits.
-  {
-    files: ['test/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'off',
-      'no-shadow': 'error',
-      'no-param-reassign': 'error',
-      'prefer-destructuring': 'error',
-      'consistent-return': 'error',
-      'sonarjs/publicly-writable-directories': 'off',
-      'sonarjs/os-command': 'off',
-      // Test callbacks have shape (err: Error|null, ...) — when reject(err)
-      // fires, err is non-null Error by control flow, but TS doesn't narrow
-      // it. Wrapping every site in `err instanceof Error ? reject(err) :
-      // reject(new Error(String(err)))` adds noise without catching real bugs.
-      'prefer-promise-reject-errors': 'off',
     },
   },
   prettierConfig,

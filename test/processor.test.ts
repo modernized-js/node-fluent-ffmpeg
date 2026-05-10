@@ -5,24 +5,14 @@ import fs from 'node:fs';
 import { access, unlink, rmdir, stat, readdir } from 'node:fs/promises';
 import stream from 'node:stream';
 import EventEmitter from 'node:events';
-import { exec, execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
 const FfmpegCommand = require('../index.js');
 const testhelper = require('./helpers.js');
 
-function isCommandInPath(cmd: string): boolean {
-  try {
-    const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
-    execSync(probe, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const ffmpegInPath = isCommandInPath('ffmpeg');
+const ffmpegInPath = testhelper.isCommandInPath('ffmpeg');
 const ffmpegIt = ffmpegInPath ? it : it.skip;
 
 const skipNiceness = /win(32|64)/.test(process.platform);
@@ -183,7 +173,7 @@ describe('Processor', () => {
             try {
               assert.notEqual(err.message.indexOf('timeout'), -1);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .on('end', () => reject(new Error('end was called, expected a timeout')))
@@ -208,6 +198,7 @@ describe('Processor', () => {
         `  .saveToFile('/dev/null');`,
       ].join('\n');
       await new Promise<void>((resolve, reject) => {
+        // eslint-disable-next-line sonarjs/os-command -- intentional: spawns a fresh node to verify no event loop holds keep the process alive
         exec(
           `node -e "${script.replace(/\n/g, ' ').replace(/"/g, '\\"')}"`,
           { timeout: 1000 },
@@ -237,7 +228,7 @@ describe('Processor', () => {
                   assert.equal(errorCalled, true);
                   resolve();
                 } catch (e) {
-                  reject(e as Error);
+                  reject(testhelper.toError(e));
                 }
               }, 1000);
             });
@@ -248,7 +239,7 @@ describe('Processor', () => {
               assert.equal(startCalled, true);
               errorCalled = true;
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .on('end', () => reject(new Error('end was called, expected an error')))
@@ -278,7 +269,7 @@ describe('Processor', () => {
                 assert.equal(errorCalled, true);
                 resolve();
               } catch (e) {
-                reject(e as Error);
+                reject(testhelper.toError(e));
               }
             });
           })
@@ -287,7 +278,7 @@ describe('Processor', () => {
               assert.equal(startCalled, true);
               assert.notEqual(err.message.indexOf('timeout'), -1);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
               return;
             }
             errorCalled = true;
@@ -310,7 +301,7 @@ describe('Processor', () => {
               assert.ok('audio' in data);
               assert.ok('video' in data);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .usingPreset('divx')
@@ -333,7 +324,7 @@ describe('Processor', () => {
               assert.ok('audio' in data);
               assert.ok('video' in data);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .usingPreset('divx')
@@ -358,7 +349,7 @@ describe('Processor', () => {
               assert.ok('audio' in data1);
               assert.ok('audio' in data2);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
@@ -389,7 +380,7 @@ describe('Processor', () => {
               assert.equal(gotProgress, true);
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -409,7 +400,7 @@ describe('Processor', () => {
               assert.notEqual(cmdline.indexOf('testvideo-5m'), -1);
               assert.notEqual(cmdline.indexOf('-b:a 128k'), -1);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .usingPreset('divx')
@@ -422,7 +413,7 @@ describe('Processor', () => {
               assert.equal(startCalled, true);
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -448,7 +439,7 @@ describe('Processor', () => {
               assert.ok(lines.filter((l) => l.indexOf('Press [q]') === 0).length > 0);
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -473,7 +464,7 @@ describe('Processor', () => {
               assert.ok(stderr.split('\n').length < 11);
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -511,7 +502,7 @@ describe('Processor', () => {
               assert.equal(filenames.length, expected.length);
               filenames.forEach((file, idx) => assert.equal(file, expected[idx]));
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .on('end', async () => {
@@ -523,7 +514,7 @@ describe('Processor', () => {
               expected.forEach((f) => assert.notEqual(content.indexOf(f), -1));
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .takeScreenshots(config, testFolder);
@@ -645,7 +636,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -713,10 +704,11 @@ describe('Processor', () => {
             startCalled = true;
             command.ffmpegProc.on('exit', async () => {
               try {
+                // eslint-disable-next-line sonarjs/publicly-writable-directories -- negative-path: asserts file does NOT exist after ffmpeg failure
                 assert.equal(await exists('/tmp/will-not-be-created.avi'), false);
                 resolve();
               } catch (e) {
-                reject(e as Error);
+                reject(testhelper.toError(e));
               }
             });
           })
@@ -730,11 +722,12 @@ describe('Processor', () => {
                 assert.equal(err.message.indexOf('Input stream error: '), 0);
                 assert.equal(err.inputStreamError, readError);
               } catch (e) {
-                reject(e as Error);
+                reject(testhelper.toError(e));
               }
             },
           )
           .on('end', () => reject(new Error('end was called, expected an error')))
+          // eslint-disable-next-line sonarjs/publicly-writable-directories -- negative-path: ffmpeg fails on input stream error before any write
           .saveToFile('/tmp/will-not-be-created.avi');
       });
     });
@@ -758,7 +751,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .mergeAdd(testfileaudio2)
@@ -788,7 +781,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .writeToStream(outstream, { end: true });
@@ -815,7 +808,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .writeToStream(outstream);
@@ -843,7 +836,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           });
 
@@ -881,7 +874,7 @@ describe('Processor', () => {
                 assert.equal(err.message.indexOf('Output stream error: '), 0);
                 assert.equal(err.outputStreamError, writeError);
               } catch (e) {
-                reject(e as Error);
+                reject(testhelper.toError(e));
               }
             },
           )
@@ -1006,7 +999,7 @@ describe('Processor', () => {
               }
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .run();
@@ -1034,7 +1027,7 @@ describe('Processor', () => {
               assert.ok(stats.isFile());
               resolve();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile(testFile);
@@ -1083,7 +1076,7 @@ describe('Processor', () => {
               errorAsserted = true;
               tryFinish();
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .on('end', () => reject(new Error('expected error, got end')))
@@ -1100,7 +1093,7 @@ describe('Processor', () => {
               assert.match(err.message, /Unrecognized option 'invalidoption'/);
               setTimeout(resolve, 1000);
             } catch (e) {
-              reject(e as Error);
+              reject(testhelper.toError(e));
             }
           })
           .saveToFile('/will/not/be/created/anyway');

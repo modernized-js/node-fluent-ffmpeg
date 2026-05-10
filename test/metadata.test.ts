@@ -2,24 +2,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 const testhelper = require('./helpers.js');
 
-function isCommandInPath(cmd: string): boolean {
-  try {
-    const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
-    execSync(probe, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const ffprobeInPath = isCommandInPath('ffprobe');
+const ffprobeInPath = testhelper.isCommandInPath('ffprobe');
 const ffprobeIt = ffprobeInPath ? it : it.skip;
 
 const testfile = path.join(__dirname, 'assets', 'testvideo-43.avi');
