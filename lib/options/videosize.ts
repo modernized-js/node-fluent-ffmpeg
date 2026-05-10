@@ -180,14 +180,8 @@ function applyVideoSizeOptions(proto: FfmpegCommandPrototype): void {
     proto.autoPad =
     proto.autopad =
       function (this: FfmpegCommandThis, pad?: boolean | string, color?: string) {
-        let enabled: boolean;
-        let actualColor = color;
-        if (typeof pad === 'string') {
-          actualColor = pad;
-          enabled = true;
-        } else {
-          enabled = pad ?? true;
-        }
+        const enabled = typeof pad === 'string' ? true : (pad ?? true);
+        const actualColor = typeof pad === 'string' ? pad : color;
         // Match legacy: empty-string color falls back to 'black' (uses ||, not ??).
         const value: string | false = enabled ? actualColor || 'black' : false;
         applySizeFilters(
