@@ -4,6 +4,8 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-11
+
 ### Fixed
 
 - **Type declaration of `mergeToFile(target, tmpFolder?: string)` was a lie.** The implementation never had any `tmpFolder` handling — `mergeToFile`, `concatenate`, and `concat` are aliases for the same unified function that simply forwards its second argument to `output(target, options)` (which expects `PipeOptions`). Callers passing a tmpFolder string (e.g. `cmd.mergeToFile('out.mp4', '/tmp')`) were silently broken at runtime; the second argument was being treated as a `PipeOptions` object. The type now matches reality: `mergeToFile(target, options?: PipeOptions)`. **This is a type-only breaking change** for consumers relying on the old (incorrect) `tmpFolder?: string` signature; runtime behaviour is unchanged. If you actually need an upstream-style `mergeToFile` with intermediate-file semantics, that's a separate feature request.
