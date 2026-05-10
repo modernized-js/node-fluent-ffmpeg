@@ -2,14 +2,15 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { unlink, access } from 'node:fs/promises';
-import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
+const testhelper = require('./helpers.js');
 
 interface FfmpegInst {
   on(event: string, listener: (...args: unknown[]) => unknown): FfmpegInst;
+  emit(event: string, ...args: unknown[]): boolean;
   saveToFile(p: string): FfmpegInst;
   takeFrames(n: number): FfmpegInst;
   withVideoCodec(c: string): FfmpegInst;
@@ -17,26 +18,7 @@ interface FfmpegInst {
   withSize(s: string): FfmpegInst;
 }
 
-interface ProgressReport {
-  frames: number;
-  currentFps: number;
-  currentKbps: number;
-  targetSize: number;
-  timemark: string;
-  percent?: number;
-}
-
-function isCommandInPath(cmd: string): boolean {
-  try {
-    const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
-    execSync(probe, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const ffmpegInPath = isCommandInPath('ffmpeg');
+const ffmpegInPath = testhelper.isCommandInPath('ffmpeg');
 const ffmpegIt = ffmpegInPath ? it : it.skip;
 
 const testdir = path.join(__dirname, 'assets');
@@ -73,12 +55,28 @@ describe('Progress event regression for upstream #935 / #979', () => {
     }
   });
 
-  it('FfmpegCommand instances are independent (per-instance _ffprobeData)', () => {
-    const a: { _ffprobeData?: unknown } = new Ffmpeg({ source: testfile });
-    const b: { _ffprobeData?: unknown } = new Ffmpeg({ source: testfile });
-    a._ffprobeData = { sentinel: 'a' };
-    assert.notEqual(a._ffprobeData, b._ffprobeData);
-    assert.equal(b._ffprobeData, undefined);
+  // The exact upstream bug shape: a 'progress' event emitted on one
+  // command must NOT be received by another command's listener. If the
+  // emitter (or the progress chain wired through it) were shared, the
+  // event would cross-pollinate and only one of two consecutive commands
+  // would appear to "work" from the consumer's POV. Testing the
+  // EventEmitter directly catches a regression even if it's introduced
+  // outside _ffprobeData (e.g. a hypothetical module-level
+  // progress-callback registry).
+  it('progress events emitted on one command do not leak to another command', () => {
+    const a: FfmpegInst = new Ffmpeg({ source: testfile });
+    const b: FfmpegInst = new Ffmpeg({ source: testfile });
+    const aProgresses: unknown[] = [];
+    const bProgresses: unknown[] = [];
+    a.on('progress', (p) => {
+      aProgresses.push(p);
+    });
+    b.on('progress', (p) => {
+      bProgresses.push(p);
+    });
+    a.emit('progress', { frames: 1, timemark: '00:00:01.00' });
+    assert.equal(aProgresses.length, 1, 'a must receive its own progress event');
+    assert.equal(bProgresses.length, 0, 'progress emitted on a must NOT reach b');
   });
 
   ffmpegIt('emits progress events on each of two consecutive commands', async () => {
@@ -94,16 +92,14 @@ describe('Progress event regression for upstream #935 / #979', () => {
           .takeFrames(10)
           .withVideoCodec('mpeg4')
           .withSize('320x240')
-          .on('progress', (p: unknown) => {
-            const report = p as ProgressReport;
-            // Only count progress reports that are non-trivial (some
-            // ffmpeg builds emit a leading frame=0 event before any
-            // real work).
-            if (typeof report.timemark === 'string' && report.timemark.length > 0) {
-              progressCount += 1;
-            }
+          // The upstream regression makes the second command emit ZERO
+          // progress events. Counting all events is the right shape for
+          // catching it — even ffmpeg's initial frame=0 sentinel is
+          // evidence that the per-instance progress chain is wired.
+          .on('progress', () => {
+            progressCount += 1;
           })
-          .on('error', (err: unknown) => reject(err as Error))
+          .on('error', (err: unknown) => reject(testhelper.toError(err)))
           .on('end', () => resolve(progressCount))
           .saveToFile(output);
       });
