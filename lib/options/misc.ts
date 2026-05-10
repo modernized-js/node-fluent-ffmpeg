@@ -2,7 +2,16 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import type { FfmpegCommandPrototype, FfmpegCommandThis } from '../types.js';
 
-const requireFromHere = createRequire(__filename);
+// `__filename` is undefined when our compiled CJS is re-emitted as ESM
+// by a downstream bundler (SvelteKit / Vite SSR / esbuild ESM mode —
+// the same scenario as issue #43). Without the guard, the package
+// fails to import with `ReferenceError: __filename is not defined`
+// before the user can construct any FfmpegCommand. The cwd-anchored
+// fallback lets module load succeed; preset loading will surface the
+// existing 'preset … could not be loaded' error if it can't resolve.
+const requireAnchor =
+  typeof __filename !== 'undefined' ? __filename : path.join(process.cwd(), 'esm-fallback.cjs');
+const requireFromHere = createRequire(requireAnchor);
 
 interface PresetModule {
   load?: (cmd: FfmpegCommandThis) => void;
