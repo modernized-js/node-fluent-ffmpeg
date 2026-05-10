@@ -935,6 +935,42 @@ describe('Processor', () => {
         assert.ok(chunks.length > 0, 'sink must receive at least one ffmpeg chunk');
       },
     );
+
+    // Regression for issue #40 / upstream #1129. Repeatedly piping ffmpeg
+    // jobs into the same long-lived Writable used to leak `'close'` /
+    // `'error'` listeners (one pair per run), eventually triggering Node's
+    // MaxListenersExceededWarning. The fix detaches both listeners on
+    // `ffmpegProc.exit`; this test runs several short encodes against a
+    // shared sink and asserts the listener count never exceeds 1 of each.
+    ffmpegIt('should not leak target close/error listeners across consecutive pipes', async () => {
+      const sink = new stream.PassThrough();
+      sink.on('data', () => {});
+      const ENCODE_COUNT = 5;
+      const MAX_LISTENERS_PER_EVENT = 1;
+
+      for (let i = 0; i < ENCODE_COUNT; i++) {
+        await new Promise<void>((resolve, reject) => {
+          const command = makeCommand({ source: testfile, logger: testhelper.logger })
+            .takeFrames(2)
+            .withVideoCodec('mjpeg')
+            .addOption('-f', 'image2pipe');
+          command
+            .on('error', (err: Error) => reject(err))
+            .on('end', () => resolve())
+            .writeToStream(sink, { end: false });
+        });
+        // Allow the post-exit detach hook to fire before checking.
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+        assert.ok(
+          sink.listenerCount('close') <= MAX_LISTENERS_PER_EVENT,
+          `close listeners leaked after run ${i + 1}: ${sink.listenerCount('close')}`,
+        );
+        assert.ok(
+          sink.listenerCount('error') <= MAX_LISTENERS_PER_EVENT,
+          `error listeners leaked after run ${i + 1}: ${sink.listenerCount('error')}`,
+        );
+      }
+    });
   });
 
   describe('Outputs', () => {

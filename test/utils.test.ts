@@ -773,6 +773,57 @@ describe('utils.extractProgress', () => {
     assert.equal(data.targetSize, 100);
     assert.equal(data.currentKbps, 8);
   });
+
+  // --- Regression for issue #41 / upstream #1201 ----------------------
+  //
+  // Modern ffmpeg emits `bitrate=N/A` and `size=N/A` for several common
+  // scenarios (output to a pipe before the first frame, copy codec,
+  // fragmented mp4 with `-movflags frag_keyframe`, hardware encoders
+  // mid-keyframe). The legacy parseInt/parseFloat returned `NaN` in
+  // those cases and the consumer's progress UI rendered garbage.
+  // The fix coerces non-finite parses to 0 via numericFieldOrZero.
+
+  it('coerces N/A bitrate to 0 (issue #41 fix)', () => {
+    const command = makeCommand();
+    utils.extractProgress(command, 'frame=10 fps=20 size=N/A time=00:00:01.0 bitrate=N/A speed=1x');
+    const [data] = command.progresses;
+    assert.equal(data.currentKbps, 0, 'bitrate=N/A must coerce to 0, not NaN');
+    assert.equal(data.targetSize, 0, 'size=N/A must coerce to 0, not NaN');
+    assert.equal(Number.isNaN(data.currentKbps), false);
+    assert.equal(Number.isNaN(data.targetSize), false);
+  });
+
+  it('coerces N/A frame count to 0', () => {
+    const command = makeCommand();
+    utils.extractProgress(command, 'frame=N/A fps=N/A size=1 time=00:00:01.0 bitrate=1kbits/s');
+    const [data] = command.progresses;
+    assert.equal(data.frames, 0);
+    assert.equal(data.currentFps, 0);
+  });
+
+  it('preserves valid numeric fields when only some are N/A', () => {
+    const command = makeCommand();
+    utils.extractProgress(command, 'frame=42 fps=24 size=N/A time=00:00:01.0 bitrate=N/A speed=1x');
+    const [data] = command.progresses;
+    assert.equal(data.frames, 42, 'numeric frame count survives even when other fields are N/A');
+    assert.equal(data.currentFps, 24);
+    assert.equal(data.currentKbps, 0);
+    assert.equal(data.targetSize, 0);
+  });
+
+  it('regression: a fully-numeric progress line still reports the numeric values (no behaviour change)', () => {
+    const command = makeCommand();
+    utils.extractProgress(
+      command,
+      'frame=120 fps=30 q=20.0 size=1024kB time=00:00:04.00 bitrate=2000kbits/s speed=1.0x',
+    );
+    const [data] = command.progresses;
+    assert.equal(data.frames, 120);
+    assert.equal(data.currentFps, 30);
+    assert.equal(data.currentKbps, 2000);
+    assert.equal(data.targetSize, 1024);
+    assert.equal(data.timemark, '00:00:04.00');
+  });
 });
 
 describe('utils.which (callback wrapper around which@7)', () => {

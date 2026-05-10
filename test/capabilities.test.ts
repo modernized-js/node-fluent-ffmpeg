@@ -393,6 +393,41 @@ describe('Capabilities', () => {
       postCallSync = 1;
       assert.equal(observedDuringCallback, 0);
     });
+
+    // Regression: an explicit setFfprobePath() must survive a later
+    // setFfmpegPath() — the user declared the ffprobe location and a
+    // sibling-derivation refresh would surprise them.
+    it('keeps an explicit ffprobe path after setFfmpegPath swaps the ffmpeg path', async () => {
+      const ff = new Ffmpeg();
+      ff._forgetPaths();
+      ff.setFfprobePath('/explicit/probe/ffprobe');
+      ff.setFfmpegPath('/somewhere/else/ffmpeg');
+      const ffprobe = await fromCallback<string>((cb) => ff._getFfprobePath(cb));
+      assert.equal(ffprobe, '/explicit/probe/ffprobe');
+    });
+
+    // Regression: an auto-derived ffprobe path (sibling-of-ffmpeg or
+    // FFPROBE_PATH / PATH lookup) MUST be re-resolved after
+    // setFfmpegPath; otherwise a stale path leaks across binary swaps.
+    // We use process.execPath as a deterministic stand-in for the first
+    // resolution (a real existing file the resolver will accept), then
+    // change FFPROBE_PATH to an invalid path before swapping ffmpeg.
+    // Without the fix, the second call returns the cached execPath.
+    // With the fix, the cache is dropped and re-resolution falls
+    // through to PATH lookup, returning a real ffprobe — never
+    // process.execPath.
+    ffprobeIt('re-resolves an auto-derived ffprobe path after setFfmpegPath', async () => {
+      const ff = new Ffmpeg();
+      ff._forgetPaths();
+      process.env.FFPROBE_PATH = process.execPath;
+      const probe1 = await fromCallback<string>((cb) => ff._getFfprobePath(cb));
+      assert.equal(probe1, process.execPath);
+      process.env.FFPROBE_PATH = '/nonexistent/ffprobe-shim';
+      ff.setFfmpegPath('/somewhere/that/has/no/sibling/ffmpeg');
+      const probe2 = await fromCallback<string>((cb) => ff._getFfprobePath(cb));
+      assert.notEqual(probe2, process.execPath);
+      assert.ok(typeof probe2 === 'string' && probe2.length > 0);
+    });
   });
 
   describe('flvtool path', () => {

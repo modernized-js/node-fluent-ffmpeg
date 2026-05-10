@@ -222,15 +222,27 @@ function parseProgressLine(line: string): Record<string, string> | null {
   return allValid ? progress : null;
 }
 
+// Coerce ffmpeg's progress-line numeric fields to a finite number.
+// Modern ffmpeg emits `bitrate=N/A`, `size=N/A`, etc. for several common
+// scenarios (output to pipe before first frame, copy codec, fragmented mp4,
+// hardware encoders mid-keyframe). The legacy parseInt/parseFloat returned
+// `NaN` in those cases, which propagated to consumer progress UIs as
+// garbage. Map `N/A` and any other non-finite parse to `0`.
+function numericFieldOrZero(value: string | undefined): number {
+  if (!value) return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function extractProgress(command: CommandLike, stderrLine: string): void {
   const progress = parseProgressLine(stderrLine);
   if (!progress) return;
 
   const ret: ProgressReport = {
-    frames: parseInt(progress.frame, 10),
-    currentFps: parseInt(progress.fps, 10),
-    currentKbps: progress.bitrate ? parseFloat(progress.bitrate.replace('kbits/s', '')) : 0,
-    targetSize: parseInt(progress.size || progress.Lsize, 10),
+    frames: numericFieldOrZero(progress.frame),
+    currentFps: numericFieldOrZero(progress.fps),
+    currentKbps: progress.bitrate ? numericFieldOrZero(progress.bitrate.replace('kbits/s', '')) : 0,
+    targetSize: numericFieldOrZero(progress.size ?? progress.Lsize),
     timemark: progress.time,
   };
 

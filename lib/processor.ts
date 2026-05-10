@@ -250,7 +250,8 @@ function pipeOutputStream(
   }
   const target = outputStream.target;
   ffmpegProc.stdout!.pipe(target, outputStream.pipeopts);
-  target.on('close', () => {
+
+  const onClose = (): void => {
     self.logger.debug('Output stream closed, scheduling kill for ffmpeg process');
     // Give ffmpeg a chance to exit cleanly first; under load 'exit' sometimes
     // arrives after the output stream's 'close'. The re-check inside the
@@ -262,13 +263,28 @@ function pipeOutputStream(
       emitEnd(new Error('Output stream closed'));
       ffmpegProc.kill();
     }, OUTPUT_STREAM_GRACE_MS);
-  });
-  target.on('error', (err) => {
+  };
+  const onError = (err: Error): void => {
     self.logger.debug('Output stream error, killing ffmpeg process');
     const reportingErr: ReportingError = new Error(`Output stream error: ${err.message}`);
     reportingErr.outputStreamError = err;
     emitEnd(reportingErr, stdoutRing.get(), stderrRing.get());
     ffmpegProc.kill('SIGKILL');
+  };
+
+  target.on('close', onClose);
+  target.on('error', onError);
+  // Detach the close/error listeners on ffmpeg exit. Without this,
+  // consumers piping many short ffmpeg jobs into the same long-lived
+  // Writable (e.g. a PassThrough fed to a media server) accumulate
+  // listeners and Node prints `MaxListenersExceededWarning`.
+  // Detaching on `'exit'` is safe: at that point the close handler has
+  // either already run (and scheduled its grace timeout, which is a
+  // free-standing setTimeout that does not depend on target listeners)
+  // or will not fire since ffmpeg's stdout has finalised.
+  ffmpegProc.once('exit', () => {
+    target.removeListener('close', onClose);
+    target.removeListener('error', onError);
   });
 }
 
