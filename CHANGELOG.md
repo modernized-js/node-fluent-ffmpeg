@@ -4,6 +4,10 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 
 ## [Unreleased]
 
+### Added
+
+- **#54** — New `FfmpegCommandOptions.skipMetadata` boolean. When set to `true`, the background ffprobe metadata fetch (which populates `progress.percent`) is suppressed, avoiding the double HTTP request for URL inputs. The `progress` event still fires; only the `percent` field becomes undefined. Mirrors upstream [fluent-ffmpeg#1191](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1191). Default behaviour unchanged when `skipMetadata` is absent or `false`. (#TBD)
+
 ### Fixed
 
 - **#37** — `formatRegexp` now consumes the optional 3rd `[d ]?` flag column emitted by ffmpeg for virtual / device demuxers (`lavfi`, `gdigrab`, `iec61883`, …). `inputFormat('lavfi')` no longer raises *"Input format lavfi is not available"*. Mirrors upstream [fluent-ffmpeg#1282](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1282) / [#1262](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1262). (#45)

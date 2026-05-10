@@ -458,7 +458,11 @@ function applyProcessor(proto: FfmpegCommandPrototype): void {
       (err: unknown) => callback(err instanceof Error ? err : new Error(String(err))),
     );
 
-    if (!readMetadata) startEarlyMetadataProbe(this);
+    // Skip the background ffprobe entirely when the consumer opted out
+    // via `options.skipMetadata`. Avoids the double HTTP request on
+    // URL inputs (issue #54 / upstream #1191) at the cost of an
+    // undefined `percent` field on `progress` events.
+    if (!readMetadata && !this.options.skipMetadata) startEarlyMetadataProbe(this);
   };
 
   proto.exec =

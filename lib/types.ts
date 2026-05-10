@@ -94,6 +94,15 @@ export interface FfmpegCommandOptions {
   cwd?: string;
   timeout?: number;
   stdoutLines?: number;
+  /**
+   * When true, skip the early ffprobe metadata fetch that runs in the
+   * background to populate `progress.percent`. Useful for URL inputs
+   * where the pre-probe doubles the HTTP requests, or for any input
+   * where `progress.percent` is not needed. Without metadata the
+   * `progress` event still fires but `percent` is undefined.
+   * See issue #54 / upstream #1191.
+   */
+  skipMetadata?: boolean;
   [key: string]: unknown;
 }
 
