@@ -82,11 +82,38 @@ function isOptionsObject(value: unknown): value is FfmpegCommandOptions {
   return typeof value === 'object' && value !== null && !('readable' in value);
 }
 
+/**
+ * Resolve the bundled `presets/` directory path in a way that survives
+ * both the regular CJS dist (where `__dirname` is defined) and the
+ * ESM-bundler scenario (SvelteKit / Vite SSR / esbuild ESM mode) where
+ * a downstream tool re-emits our compiled CJS as part of an ESM bundle
+ * and `__dirname` is undefined. See issue #43 / upstream #1283.
+ *
+ * The `dirname` parameter exists for testability — production callers
+ * pass the default (current `__dirname` if defined, else undefined).
+ *
+ * In the ESM-bundle branch we return the relative string `'presets'`
+ * rather than trying to recover the absolute path from `import.meta`:
+ * indirect-`eval` of an `import.meta` reference is parsed as Script and
+ * always SyntaxErrors, so any such recovery is dead code in practice.
+ * The relative-path fallback lets module load succeed; preset loading
+ * will surface the existing 'preset … could not be loaded' error
+ * instead of crashing the import with `ReferenceError`.
+ */
+export function resolveBundledPresetsDir(
+  dirname: string | undefined = typeof __dirname !== 'undefined' ? __dirname : undefined,
+): string {
+  if (dirname) {
+    return path.join(dirname, 'presets');
+  }
+  return 'presets';
+}
+
 function applyDefaults(options: FfmpegCommandOptions): void {
   options.stdoutLines = 'stdoutLines' in options ? options.stdoutLines : DEFAULT_STDOUT_LINES;
   // Legacy used `||` (falsy fallback). Keep that exactly so '' presets and
   // niceness:0 with a priority set still inherit the right value.
-  options.presets = options.presets || options.preset || path.join(__dirname, 'presets');
+  options.presets = options.presets || options.preset || resolveBundledPresetsDir();
   options.niceness = options.niceness || options.priority || 0;
 }
 
@@ -223,4 +250,4 @@ FfmpegCommand.ffprobe = function (file: string, ...args: unknown[]): void {
   (inst.ffprobe as (...a: unknown[]) => void)(...args);
 };
 
-export = FfmpegCommand;
+export default FfmpegCommand;
