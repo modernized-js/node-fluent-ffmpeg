@@ -82,6 +82,19 @@ function isOptionsObject(value: unknown): value is FfmpegCommandOptions {
   return typeof value === 'object' && value !== null && !('readable' in value);
 }
 
+function resolveCommandOptions(
+  input: FfmpegInput,
+  options: FfmpegCommandOptions | undefined,
+): FfmpegCommandOptions {
+  if (isOptionsObject(input)) return input;
+  // Match legacy: unconditional source assignment, including undefined,
+  // so `new FfmpegCommand(undefined, { source: 'foo' })` clears `source`
+  // exactly the way the legacy constructor did.
+  const opts = options ?? {};
+  opts.source = input;
+  return opts;
+}
+
 /**
  * Resolve the bundled `presets/` directory path in a way that survives
  * both the regular CJS dist (where `__dirname` is defined) and the
@@ -136,18 +149,7 @@ function FfmpegCommandImpl(
   }
   EventEmitter.call(this);
 
-  let opts: FfmpegCommandOptions;
-  if (isOptionsObject(input)) {
-    opts = input;
-  } else {
-    // Match legacy: unconditional source assignment, including undefined,
-    // so `new FfmpegCommand(undefined, { source: 'foo' })` clears `source`
-    // exactly the way the legacy constructor did. The else-branch narrows
-    // `input` to `Exclude<FfmpegInput, FfmpegCommandOptions>` =
-    // `string | Readable | undefined`, which is structurally `opts.source`.
-    opts = options ?? {};
-    opts.source = input;
-  }
+  const opts = resolveCommandOptions(input, options);
 
   this._inputs = [];
   if (opts.source) this.input(opts.source);

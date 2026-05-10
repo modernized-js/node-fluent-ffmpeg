@@ -105,16 +105,14 @@ function parseFfprobeArgs(args: unknown[]): FfprobeArgs {
   // mode for malformed callers (silent drop vs. early TypeError) without
   // a behavioural justification — keep the trust-the-overload pattern.
   const callback = args[args.length - 1] as FfprobeCallback;
-  let index: number | null = null;
-  let options: string[] = [];
   if (args.length === 3) {
-    index = args[0] as number;
-    options = args[1] as string[];
-  } else if (args.length === 2) {
-    if (typeof args[0] === 'number') index = args[0];
-    else if (Array.isArray(args[0])) options = args[0];
+    return { index: args[0] as number, options: args[1] as string[], callback };
   }
-  return { index, options, callback };
+  if (args.length === 2) {
+    if (typeof args[0] === 'number') return { index: args[0], options: [], callback };
+    if (Array.isArray(args[0])) return { index: null, options: args[0], callback };
+  }
+  return { index: null, options: [], callback };
 }
 
 function pickInput(

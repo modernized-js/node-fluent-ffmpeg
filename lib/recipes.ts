@@ -73,12 +73,8 @@ export function normaliseScreenshotConfig(
   input: number | ScreenshotConfig | undefined,
   folder?: string,
 ): ScreenshotConfig {
-  let config: ScreenshotConfig;
-  if (typeof input === 'number') {
-    config = { count: input };
-  } else {
-    config = { ...(input ?? { count: 1 }) };
-  }
+  const config: ScreenshotConfig =
+    typeof input === 'number' ? { count: input } : { ...(input ?? { count: 1 }) };
   if (!('folder' in config)) config.folder = folder ?? '.';
   if (config.timestamps !== undefined) config.timemarks = config.timestamps;
 
