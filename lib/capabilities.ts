@@ -16,7 +16,9 @@ const ffCodecRegexp = /^\s*([D.])([E.])([VAS])([I.])([L.])([S.]) ([^ ]+) +(.*)$/
 const ffEncodersRegexp = /\(encoders:([^)]+)\)/;
 const ffDecodersRegexp = /\(decoders:([^)]+)\)/;
 const encodersRegexp = /^\s*([VAS.])([F.])([S.])([X.])([B.])([D.]) ([^ ]+) +(.*)$/;
-const formatRegexp = /^\s*([D ])([E ])\s+([^ ]+)\s+(.*)$/;
+// The 3rd flag column [d ] is for device demuxers/muxers (e.g. `D d lavfi`)
+// — ffmpeg emits a 3-column flag area for those. Optional `[d ]?` consumes it.
+const formatRegexp = /^\s*([D ])([E ])[d ]?\s+([^ ]+)\s+(.*)$/;
 const lineBreakRegexp = /\r\n|\r|\n/;
 const filterRegexp = /^(?: [T.][S.][C.] )?([^ ]+) +(AA?|VV?|\|)->(AA?|VV?|\|) +(.*)$/;
 
@@ -210,7 +212,7 @@ function parseEncodersOutput(stdout: string): Record<string, EncoderInfo> {
   return data;
 }
 
-function parseFormatsOutput(stdout: string): Record<string, FormatInfo> {
+export function parseFormatsOutput(stdout: string): Record<string, FormatInfo> {
   const data: Record<string, FormatInfo> = {};
   stdout.split(lineBreakRegexp).forEach((line) => {
     const match = line.match(formatRegexp);
@@ -271,11 +273,25 @@ function unavailableError(label: string, names: string[]): Error | null {
 function applyCapabilities(proto: FfmpegCommandPrototype): void {
   proto.setFfmpegPath = function (this: FfmpegCommandThis, ffmpegPath: string) {
     cache.ffmpegPath = ffmpegPath;
+    // Swapping the binary makes any previously-cached capability table
+    // (codecs / encoders / formats / filters) stale — drop them so the
+    // next run re-probes the new binary. Use `undefined` rather than
+    // `delete` so @typescript-eslint/no-dynamic-delete stays happy.
+    cache.codecs = undefined;
+    cache.encoders = undefined;
+    cache.formats = undefined;
+    cache.filters = undefined;
     return this;
   };
 
   proto.setFfprobePath = function (this: FfmpegCommandThis, ffprobePath: string) {
     cache.ffprobePath = ffprobePath;
+    // ffprobe doesn't own the codec / format tables (those come from
+    // ffmpeg), but invalidating them on a probe-path swap is symmetrical
+    // with setFfmpegPath and avoids surprises if the user runs only the
+    // ffprobe sidecar against a mismatched build.
+    cache.codecs = undefined;
+    cache.formats = undefined;
     return this;
   };
 
@@ -442,4 +458,4 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
   };
 }
 
-export = applyCapabilities;
+export default applyCapabilities;
