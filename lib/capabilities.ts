@@ -37,6 +37,10 @@ const filterTypeByLetter: Record<string, 'audio' | 'video' | 'none'> = {
 interface PathCache {
   ffmpegPath?: string;
   ffprobePath?: string;
+  // True only when ffprobePath came from an explicit setFfprobePath()
+  // call. Lets setFfmpegPath() invalidate an auto-derived sibling
+  // resolution while leaving a caller-declared path intact.
+  ffprobePathExplicit?: true;
   flvtoolPath?: string;
   filters?: Record<string, FilterInfo>;
   codecs?: Record<string, CodecInfo>;
@@ -281,11 +285,20 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
     cache.encoders = undefined;
     cache.formats = undefined;
     cache.filters = undefined;
+    // Auto-derived ffprobePath is sibling-of-ffmpeg (or env / PATH); a
+    // new ffmpeg location invalidates that derivation. Leave an explicit
+    // user-supplied ffprobe path alone — that's their declared intent.
+    // Path cache uses `'X' in cache` presence checks, so we must `delete`
+    // (the no-dynamic-delete rule is off for this file).
+    if (!cache.ffprobePathExplicit) {
+      delete cache.ffprobePath;
+    }
     return this;
   };
 
   proto.setFfprobePath = function (this: FfmpegCommandThis, ffprobePath: string) {
     cache.ffprobePath = ffprobePath;
+    cache.ffprobePathExplicit = true;
     // ffprobe doesn't own the codec / format tables (those come from
     // ffmpeg), but invalidating them on a probe-path swap is symmetrical
     // with setFfmpegPath and avoids surprises if the user runs only the
@@ -303,6 +316,7 @@ function applyCapabilities(proto: FfmpegCommandPrototype): void {
   proto._forgetPaths = function () {
     delete cache.ffmpegPath;
     delete cache.ffprobePath;
+    delete cache.ffprobePathExplicit;
     delete cache.flvtoolPath;
   };
 
