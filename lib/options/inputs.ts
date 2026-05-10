@@ -91,6 +91,21 @@ function applyInputsOptions(proto: FfmpegCommandPrototype): void {
     return this;
   };
 
+  // Mirror of setStartTime / seekInput for the duration `-t` flag —
+  // applies to the *current input*, not the global output. Without this,
+  // consumers cannot express the canonical ffmpeg pattern of
+  // `-t N -ss S -i input1 -t N -ss S -i input2`. See issue #53.
+  proto.setInputDuration = proto.durationInput = function (
+    this: FfmpegCommandThis,
+    duration: string | number,
+  ) {
+    if (!this._currentInput) {
+      throw new Error('No input specified');
+    }
+    this._currentInput.options('-t', duration);
+    return this;
+  };
+
   proto.loop = function (this: FfmpegCommandThis, duration?: string | number) {
     if (!this._currentInput) {
       throw new Error('No input specified');

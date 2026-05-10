@@ -6,7 +6,7 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 
 ### Added
 
-- **#54** — New `FfmpegCommandOptions.skipMetadata` boolean. When set to `true`, the background ffprobe metadata fetch (which populates `progress.percent`) is suppressed, avoiding the double HTTP request for URL inputs. The `progress` event still fires; only the `percent` field becomes undefined. Mirrors upstream [fluent-ffmpeg#1191](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1191). Default behaviour unchanged when `skipMetadata` is absent or `false`. (#TBD)
+- **#53** — New chainable `durationInput(d)` (and its `setInputDuration(d)` alias) that mirrors the existing `seekInput(s)` / `setStartTime(s)` pair — applies `-t <duration>` to the **current input** rather than the global output. Lets consumers express the canonical multi-input pattern `ffmpeg -t N -ss S -i input1 -t N -ss S -i input2 …`. Mirrors upstream [fluent-ffmpeg#1247](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1247). The existing output-side `.duration()` is unchanged. (#56)
 
 ### Fixed
 
