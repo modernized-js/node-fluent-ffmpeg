@@ -149,6 +149,17 @@ interface SpawnState {
   exitError: Error | null;
 }
 
+// Build the argv passed to the ffprobe child. The input's stored
+// `inputOptions` (e.g. `-headers`, `-rtsp_transport`, `-allowed_extensions`)
+// must be forwarded to the sidecar — without them the probe silently fails
+// on auth-protected URLs / RTSP feeds and the resulting `progress.percent`
+// is forever undefined. Caller-supplied `options` come last so an explicit
+// `ffprobe(idx, opts, cb)` override still wins on conflicting flags.
+export function buildFfprobeArgv(input: InputState, options: string[], src: string): string[] {
+  const inputOpts = input.options.get().map(String);
+  return [...inputOpts, '-show_streams', '-show_format', ...options, src];
+}
+
 function runFfprobe(
   probePath: string,
   input: InputState,
@@ -187,9 +198,7 @@ function runFfprobe(
   // `input.isStream` flag alone doesn't narrow the source union for TS;
   // the typeof check picks up the string side without an `as` cast.
   const src = !input.isStream && typeof input.source === 'string' ? input.source : 'pipe:0';
-  const child = spawn(probePath, ['-show_streams', '-show_format', ...options, src], {
-    windowsHide: true,
-  });
+  const child = spawn(probePath, buildFfprobeArgv(input, options, src), { windowsHide: true });
 
   // isStream=true implies source is Readable (caller-side contract);
   // the typeof check narrows the union for TS without an `as` cast.
@@ -251,4 +260,4 @@ function applyFfprobe(proto: FfmpegCommandPrototype): void {
   };
 }
 
-export = applyFfprobe;
+export default applyFfprobe;
