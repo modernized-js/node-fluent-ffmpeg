@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import {
   pickBiggestVideoStream,
@@ -353,13 +354,13 @@ describe('replaceFilenameTokens', () => {
 
   it('throws when the source is not a string and the pattern contains %f', () => {
     assert.throws(
-      () => replaceFilenameTokens('%f.png', { kind: 'stream' }),
+      () => replaceFilenameTokens('%f.png', Readable.from([])),
       /Cannot replace %f or %b when using an input stream/,
     );
   });
 
   it('does NOT throw when the source is non-string but the pattern is also tokenless', () => {
-    assert.equal(replaceFilenameTokens('static.png', { kind: 'stream' }), 'static.png');
+    assert.equal(replaceFilenameTokens('static.png', Readable.from([])), 'static.png');
   });
 });
 

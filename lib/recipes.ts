@@ -1,6 +1,6 @@
 import { mkdir, access } from 'node:fs/promises';
 import path from 'node:path';
-import { PassThrough, type Writable } from 'node:stream';
+import { PassThrough, type Readable, type Writable } from 'node:stream';
 import utils from './utils.js';
 import type {
   FfmpegCommandPrototype,
@@ -8,6 +8,7 @@ import type {
   FfprobeData,
   FfprobeStream,
   FilterSpec,
+  PipeOptions,
 } from './types.js';
 
 const PERCENT_BASE = 100;
@@ -106,7 +107,7 @@ export function isPercentTimemark(t: string | number): boolean {
 
 async function resolvePercentTimemarks(
   config: ScreenshotConfig,
-  source: string | unknown,
+  source: string | Readable,
   getMetadata: () => Promise<FfprobeData>,
 ): Promise<void> {
   if (!config.timemarks!.some(isPercentTimemark)) return;
@@ -141,7 +142,7 @@ export function fixPattern(config: ScreenshotConfig): string {
   return pattern;
 }
 
-export function replaceFilenameTokens(pattern: string, source: string | unknown): string {
+export function replaceFilenameTokens(pattern: string, source: string | Readable): string {
   if (!/%[bf]/.test(pattern)) return pattern;
   if (typeof source !== 'string') {
     throw new Error('Cannot replace %f or %b when using an input stream');
@@ -280,8 +281,8 @@ function applyRecipes(proto: FfmpegCommandPrototype): void {
     proto.stream =
       function (
         this: FfmpegCommandThis,
-        streamArg?: Writable | Record<string, unknown>,
-        options?: Record<string, unknown>,
+        streamArg?: Writable | PipeOptions,
+        options?: PipeOptions,
       ) {
         // Distinguish a Writable-stream argument from a plain options
         // object via duck-typing on `.pipe`. `'writable' in X` alone
@@ -346,11 +347,7 @@ function applyRecipes(proto: FfmpegCommandPrototype): void {
   proto.mergeToFile =
     proto.concatenate =
     proto.concat =
-      function (
-        this: FfmpegCommandThis,
-        target: string | Writable,
-        options?: Record<string, unknown>,
-      ) {
+      function (this: FfmpegCommandThis, target: string | Writable, options?: PipeOptions) {
         const fileInput = this._inputs.find((input) => !input.isStream);
         if (!fileInput) {
           this.emit('error', new Error('No file input for concat'));

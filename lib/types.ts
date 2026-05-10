@@ -286,7 +286,7 @@ export type PresetFunction = (command: FfmpegCommandThis) => void;
 
 type AudioVideoFilterArg = string | string[] | AudioVideoFilter[];
 type FilterSpecArg = string | FilterSpec | (string | FilterSpec)[];
-interface PipeOptions {
+export interface PipeOptions {
   end?: boolean;
 }
 type StringOptionsArg = string | string[];

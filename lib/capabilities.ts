@@ -2,6 +2,7 @@ import { access } from 'node:fs/promises';
 import path from 'node:path';
 import utils from './utils.js';
 import type {
+  ArgList,
   CodecInfo,
   EncoderInfo,
   FfmpegCommandPrototype,
@@ -233,7 +234,7 @@ export function parseFormatsOutput(stdout: string): Record<string, FormatInfo> {
 }
 
 function findUnavailableFormats(
-  containers: { options: { find: (arg: string, count?: number) => unknown[] | undefined } }[],
+  containers: { options: ArgList }[],
   formats: Record<string, FormatInfo>,
   predicate: (info: FormatInfo) => boolean,
 ): string[] {
@@ -248,10 +249,7 @@ function findUnavailableFormats(
 }
 
 function findUnavailableCodecs(
-  outputs: {
-    audio: { find: (arg: string, count?: number) => unknown[] | undefined };
-    video: { find: (arg: string, count?: number) => unknown[] | undefined };
-  }[],
+  outputs: { audio: ArgList; video: ArgList }[],
   encoders: Record<string, EncoderInfo>,
   kind: 'audio' | 'video',
   flag: string,
