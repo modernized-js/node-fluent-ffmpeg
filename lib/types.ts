@@ -472,7 +472,7 @@ export interface FfmpegCommandThis extends EventEmitter {
   ): void;
   _spawnFfmpeg(args: string[], options: SpawnOptions, endCB: SpawnEndCallback): void;
   _spawnFfmpeg(args: string[], endCB: SpawnEndCallback): void;
-  _getArguments(): (string | number)[];
+  _getArguments(): ArgValue[];
   _prepare(callback: PrepareCallback, readMetadata?: boolean): void;
 
   // capabilities
@@ -524,7 +524,7 @@ export interface FfmpegCommandThis extends EventEmitter {
   thumbnails(config: number | ScreenshotsConfig, folder?: string): this;
   screenshot(config: number | ScreenshotsConfig, folder?: string): this;
   screenshots(config: number | ScreenshotsConfig, folder?: string): this;
-  mergeToFile(target: string | Writable, tmpFolder?: string): this;
+  mergeToFile(target: string | Writable, options?: PipeOptions): this;
   concatenate(target: string | Writable, options?: PipeOptions): this;
   concat(target: string | Writable, options?: PipeOptions): this;
 
@@ -542,4 +542,4 @@ export interface FfmpegCommandThis extends EventEmitter {
   on(event: string | symbol, listener: (...args: unknown[]) => void): this;
 }
 
-export type FfmpegCommandPrototype = Record<string, unknown>;
+export type FfmpegCommandPrototype = Partial<FfmpegCommandThis>;

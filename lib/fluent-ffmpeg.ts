@@ -172,7 +172,7 @@ const FfmpegCommand = FfmpegCommandImpl as unknown as FfmpegCommandStatic;
 
 Object.setPrototypeOf(FfmpegCommand.prototype, EventEmitter.prototype);
 
-const proto = FfmpegCommand.prototype as unknown as FfmpegCommandPrototype;
+const proto: FfmpegCommandPrototype = FfmpegCommand.prototype;
 applyInputs(proto);
 applyAudio(proto);
 applyVideo(proto);

@@ -4,6 +4,18 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 
 ## [Unreleased]
 
+### Fixed
+
+- **Type declaration of `mergeToFile(target, tmpFolder?: string)` was a lie.** The implementation never had any `tmpFolder` handling — `mergeToFile`, `concatenate`, and `concat` are aliases for the same unified function that simply forwards its second argument to `output(target, options)` (which expects `PipeOptions`). Callers passing a tmpFolder string (e.g. `cmd.mergeToFile('out.mp4', '/tmp')`) were silently broken at runtime; the second argument was being treated as a `PipeOptions` object. The type now matches reality: `mergeToFile(target, options?: PipeOptions)`. **This is a type-only breaking change** for consumers relying on the old (incorrect) `tmpFolder?: string` signature; runtime behaviour is unchanged. If you actually need an upstream-style `mergeToFile` with intermediate-file semantics, that's a separate feature request.
+
+### Changed
+
+- **`FfmpegCommandThis._getArguments()` return type widened from `(string | number)[]` to `ArgValue[]`** (= `string | number | FilterSpec`) to reflect the implementation's actual return type. `_getArguments` is an internal `_`-prefixed method, but it's part of the exported `FfmpegCommandThis` interface, so this is a **type-only breaking change** for any consumer that explicitly typed an `_getArguments()` return as `(string | number)[]`. Runtime behaviour is unchanged — the implementation has always returned `ArgValue[]`; the previous narrower declaration was inaccurate. `ArgValue` was already exported from the public types module.
+
+### Internal
+
+- `FfmpegCommandPrototype` is now `Partial<FfmpegCommandThis>` instead of `Record<string, unknown>`. The 11 internal `applyXxx(proto: FfmpegCommandPrototype)` patch points across `lib/options/*.ts`, `lib/recipes.ts`, `lib/processor.ts`, `lib/capabilities.ts`, and `lib/ffprobe.ts` now type-check against the real method shapes declared on `FfmpegCommandThis`: typos in method names and signature mismatches between an alias chain and its interface declaration are caught at build time. No public API surface change — `FfmpegCommandPrototype` is not re-exported from the package entry point and was never user-facing. Eliminates one `as unknown as` cast at the prototype-assignment site in `lib/fluent-ffmpeg.ts`.
+
 ## [0.1.3] - 2026-05-10
 
 ### Added
@@ -14,7 +26,7 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 ### Fixed
 
 - **#43** — `resolveBundledPresetsDir()` no longer crashes with `ReferenceError: __dirname is not defined` when a downstream tool (SvelteKit / Vite SSR / esbuild ESM mode) re-emits the compiled CJS as part of an ESM bundle. Falls back to the relative `'presets'` string in that case, so module load succeeds and preset resolution surfaces the existing error path. Mirrors upstream [fluent-ffmpeg#1283](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1283). (#48)
-- **#37** — `formatRegexp` now consumes the optional 3rd `[d ]?` flag column emitted by ffmpeg for virtual / device demuxers (`lavfi`, `gdigrab`, `iec61883`, …). `inputFormat('lavfi')` no longer raises *"Input format lavfi is not available"*. Mirrors upstream [fluent-ffmpeg#1282](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1282) / [#1262](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1262). (#45)
+- **#37** — `formatRegexp` now consumes the optional 3rd `[d ]?` flag column emitted by ffmpeg for virtual / device demuxers (`lavfi`, `gdigrab`, `iec61883`, …). `inputFormat('lavfi')` no longer raises _"Input format lavfi is not available"_. Mirrors upstream [fluent-ffmpeg#1282](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1282) / [#1262](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1262). (#45)
 - **#38** — `inputOptions` (`-headers`, `-rtsp_transport`, `-allowed_extensions`, …) are now forwarded to the ffprobe sidecar via a new `buildFfprobeArgv()` helper, so the duration probe no longer silently 401s on auth-protected URLs / RTSP feeds and `progress.percent` works for those inputs. Mirrors upstream [fluent-ffmpeg#1146](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1146). (#45)
 - **#39** — `setFfmpegPath` / `setFfprobePath` now invalidate the cached capability tables (`codecs` / `encoders` / `formats` / `filters`) so a second run after a path swap re-probes the new binary instead of trusting stale data. `setFfmpegPath` additionally clears an auto-derived `ffprobePath` (sibling-of-ffmpeg or `PATH` lookup) while leaving an explicit `setFfprobePath` value intact. Mirrors upstream [fluent-ffmpeg#1285](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1285). (#45)
 - **#40** — `pipeOutputStream` now detaches its `close` / `error` listeners on `ffmpegProc.exit`. Consumers piping many short ffmpeg jobs into the same long-lived `Writable` (e.g. a `PassThrough` fed to a media server) no longer accumulate listeners and trip Node's `MaxListenersExceededWarning`. Mirrors upstream [fluent-ffmpeg#1129](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/1129). (#46)
