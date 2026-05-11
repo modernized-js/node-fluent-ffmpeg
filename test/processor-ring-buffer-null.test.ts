@@ -2,18 +2,42 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
+import type {
+  EncoderInfo,
+  FfprobeCallback,
+  PathCallback,
+  ProcessCallback,
+  SpawnEndCallback,
+  SpawnOptions,
+} from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 
 interface MockableFfmpegCommand {
   _checkCapabilities: (cb: (err?: Error | null) => void) => void;
-  _getFfmpegPath: (cb: (err: Error | null, p?: string) => void) => void;
-  _getFlvtoolPath: (cb: (err: Error | null, p?: string) => void) => void;
-  _spawnFfmpeg: (...args: unknown[]) => void;
+  _getFfmpegPath: (cb: PathCallback) => void;
+  _getFlvtoolPath: (cb: PathCallback) => void;
+  _spawnFfmpeg: (
+    args: string[],
+    options: SpawnOptions,
+    processCB: ProcessCallback,
+    endCB: SpawnEndCallback,
+  ) => void;
   output: (target: string) => MockableFfmpegCommand;
-  on: (event: string, listener: (...args: unknown[]) => void) => MockableFfmpegCommand;
+  on: {
+    (
+      event: 'error',
+      listener: (err: Error, stdout: string | null, stderr: string | null) => void,
+    ): MockableFfmpegCommand;
+    (event: 'end', listener: () => void): MockableFfmpegCommand;
+    (event: string, listener: (...args: unknown[]) => void): MockableFfmpegCommand;
+  };
+  availableEncoders: (
+    cb: (err: Error | null, encoders?: Record<string, EncoderInfo>) => void,
+  ) => void;
   run: () => void;
-  ffprobe: (callback: (err: Error | null, data?: unknown) => void) => void;
+  ffprobe: (callback: FfprobeCallback) => void;
 }
 
 // --- Regression for issue #44 / upstream #861 / #1316 ----------------
@@ -33,7 +57,7 @@ interface MockableFfmpegCommand {
 
 describe('processor: ring-buffer null safety in endCB (issue #44)', () => {
   it('emits a clean "error" event when _spawnFfmpeg endCB fires with undefined rings', async () => {
-    const cmd = new Ffmpeg({ source: 'irrelevant.mp4' }) as MockableFfmpegCommand;
+    const cmd: MockableFfmpegCommand = new Ffmpeg({ source: 'irrelevant.mp4' });
 
     // Bypass the capability and path checks so the run() flow reaches
     // _spawnFfmpeg directly.
@@ -45,25 +69,15 @@ describe('processor: ring-buffer null safety in endCB (issue #44)', () => {
     //   the spawn-end callback fires with an Error and no rings,
     //   matching what runs at lib/processor.ts line 358 in the real
     //   "Cannot find ffmpeg" path.
-    cmd._spawnFfmpeg = (...args: unknown[]) => {
-      // Last argument is always the spawnEnd callback regardless of the
-      // 2/3-arg overload form (see normaliseSpawnArgs). Call it with
-      // (Error, undefined, undefined) to trigger the rings-null path.
-      const last = args[args.length - 1];
-      if (typeof last === 'function') {
-        last(new Error('Cannot find ffmpeg'), undefined, undefined);
-      }
+    cmd._spawnFfmpeg = (_args, _opts, _processCB, endCB) => {
+      endCB(new Error('Cannot find ffmpeg'), undefined, undefined);
     };
 
     // The `availableEncoders` static path inside _prepare also uses
     // _spawnFfmpeg via callbackify — stub it to short-circuit.
-    (
-      cmd as unknown as {
-        availableEncoders: (cb: (err: Error | null, encoders?: unknown) => void) => void;
-      }
-    ).availableEncoders = (cb) => cb(null, {});
+    cmd.availableEncoders = (cb) => cb(null, {});
 
-    let errorEvent: { err: Error; stdout: unknown; stderr: unknown } | undefined;
+    let errorEvent: { err: Error; stdout: string | null; stderr: string | null } | undefined;
     let endEvent = false;
 
     const result = await new Promise<'error' | 'end' | 'timeout'>((resolve) => {
@@ -76,8 +90,8 @@ describe('processor: ring-buffer null safety in endCB (issue #44)', () => {
         clearTimeout(timeoutHandle);
         resolve(outcome);
       };
-      cmd.on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
-        errorEvent = { err: err as Error, stdout, stderr };
+      cmd.on('error', (err, stdout, stderr) => {
+        errorEvent = { err, stdout, stderr };
         finish('error');
       });
       cmd.on('end', () => {

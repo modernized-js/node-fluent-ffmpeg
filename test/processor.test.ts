@@ -140,7 +140,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         makeCommand({ source: testfileName, logger: testhelper.logger, cwd: testdir })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -307,7 +307,7 @@ describe('Processor', () => {
             }
           })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -330,7 +330,7 @@ describe('Processor', () => {
             }
           })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -354,7 +354,7 @@ describe('Processor', () => {
               reject(testhelper.toError(e));
             }
           })
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -373,7 +373,7 @@ describe('Processor', () => {
             gotProgress = true;
           })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -406,7 +406,7 @@ describe('Processor', () => {
             }
           })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -430,7 +430,7 @@ describe('Processor', () => {
         makeCommand({ source: testfile, logger: testhelper.logger })
           .on('stderr', (line: string) => lines.push(line))
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -456,7 +456,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         makeCommand({ stdoutLines: 10, source: testfile, logger: testhelper.logger })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -494,7 +494,7 @@ describe('Processor', () => {
       return new Promise<void>((resolve, reject) => {
         let filenamesCalled = false;
         makeCommand({ source: testfile, logger: testhelper.logger })
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -626,7 +626,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         command
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -660,7 +660,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         makeCommand({ source: testfile, logger: testhelper.logger })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -741,7 +741,7 @@ describe('Processor', () => {
       files.push(testFile);
       await new Promise<void>((resolve, reject) => {
         makeCommand({ source: testfileaudio1, logger: testhelper.logger })
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -771,7 +771,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         makeCommand({ source: testfile, logger: testhelper.logger })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -798,7 +798,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         makeCommand({ source: instream, logger: testhelper.logger })
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -826,7 +826,7 @@ describe('Processor', () => {
       await new Promise<void>((resolve, reject) => {
         command
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -989,7 +989,7 @@ describe('Processor', () => {
           .withSize('160x120')
           .withAudioCodec('aac')
           .withVideoCodec('libx264')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
@@ -1019,7 +1019,7 @@ describe('Processor', () => {
         makeCommand({ source: testfilespecial, logger: testhelper.logger, timeout: 10 })
           .takeFrames(50)
           .usingPreset('divx')
-          .on('error', (err: unknown, stdout: unknown, stderr: unknown) => {
+          .on('error', (err: Error, stdout: string | null, stderr: string | null) => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
