@@ -328,7 +328,11 @@ function applyRecipes(proto: FfmpegCommandPrototype): void {
           const size = await computeSizeForTokens(pattern, resolvedSize, getMetadata);
           pattern = replaceSizeTokens(pattern, size);
           const filenames = generateFilenames(pattern, config.timemarks);
-          this.emit('filenames', filenames);
+          // Defensive copy: consumers that store / mutate the emitted
+          // array must not affect the internal `filenames` list used to
+          // drive the screenshot pipeline below. Mirrors upstream
+          // fluent-ffmpeg#1017.
+          this.emit('filenames', [...filenames]);
           await ensureDirectory(config.folder!);
           return filenames;
         })().then(

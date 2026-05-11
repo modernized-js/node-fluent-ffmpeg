@@ -78,7 +78,8 @@ function applyOutputOptions(proto: FfmpegCommandPrototype): void {
   };
 
   proto.seekOutput = proto.seek = function (this: FfmpegCommandThis, seek: string | number) {
-    this._currentOutput!.options('-ss', seek);
+    const value = typeof seek === 'number' ? utils.formatNumberForCall(seek) : seek;
+    this._currentOutput!.options('-ss', value);
     return this;
   };
 
@@ -86,7 +87,8 @@ function applyOutputOptions(proto: FfmpegCommandPrototype): void {
     proto.setDuration =
     proto.duration =
       function (this: FfmpegCommandThis, duration: string | number) {
-        this._currentOutput!.options('-t', duration);
+        const value = typeof duration === 'number' ? utils.formatNumberForCall(duration) : duration;
+        this._currentOutput!.options('-t', value);
         return this;
       };
 

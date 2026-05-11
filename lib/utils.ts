@@ -149,10 +149,16 @@ function tryStartInput(line: string, state: Required<CodecState>): boolean {
   if (!match) return false;
   state.inInput = true;
   state.inputIndex += 1;
+  // Initialise audio_details / video_details up-front so consumers that
+  // destructure them on the `codecData` event always see an array, even
+  // for inputs that have no audio or no video stream. Mirrors upstream
+  // fluent-ffmpeg#1301.
   state.inputStack[state.inputIndex] = {
     format: match[1],
     audio: '',
+    audio_details: [],
     video: '',
+    video_details: [],
     duration: '',
   };
   return true;
@@ -210,8 +216,15 @@ function extractCodecData(
   return false;
 }
 
+// `-loglevel +level` prepends `[level]` (e.g. `[info]`, `[warning]`,
+// `[error]`) to every stderr line. Strip it before key=value parsing
+// so progress events still fire under that loglevel. Mirrors upstream
+// fluent-ffmpeg#928.
+const loglevelPrefixRegexp = /^\[[a-z]+\]\s*/;
+
 function parseProgressLine(line: string): Record<string, string> | null {
-  const trimmed = line.replace(/=\s+/g, '=').trim();
+  const stripped = line.replace(loglevelPrefixRegexp, '');
+  const trimmed = stripped.replace(/=\s+/g, '=').trim();
   const progress: Record<string, string> = {};
   const allValid = trimmed.split(' ').every((part) => {
     const [key, value] = part.split('=', 2);
@@ -220,6 +233,22 @@ function parseProgressLine(line: string): Record<string, string> | null {
     return true;
   });
   return allValid ? progress : null;
+}
+
+// Avoid scientific notation when forwarding numeric seek / duration
+// arguments to ffmpeg — ffmpeg's CLI rejects values like `1e-7`.
+// Plain-number formatting with up to 10 fractional digits matches
+// upstream fluent-ffmpeg#1131 (covers high-sample-rate audio /
+// frame-accurate seeks without losing precision).
+const FF_NUMBER_MAX_FRACTION_DIGITS = 10;
+const flatNumberFormatter = new Intl.NumberFormat('en-US', {
+  useGrouping: false,
+  maximumFractionDigits: FF_NUMBER_MAX_FRACTION_DIGITS,
+});
+
+function formatNumberForCall(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  return flatNumberFormatter.format(value);
 }
 
 // Coerce ffmpeg's progress-line numeric fields to a finite number.
@@ -333,6 +362,7 @@ const utils = {
   makeFilterStrings,
   which: whichCached,
   timemarkToSeconds,
+  formatNumberForCall,
   extractCodecData,
   extractProgress,
   extractError,

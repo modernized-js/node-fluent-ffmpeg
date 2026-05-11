@@ -20,7 +20,7 @@ describe('durationInput / setInputDuration (issue #53)', () => {
   it('appends -t <duration> to the current input options', () => {
     const cmd: FfmpegInst = new Ffmpeg().input('first.mp4').durationInput(10);
     const argv = cmd._inputs[0].options.get();
-    assert.deepEqual(argv, ['-t', 10]);
+    assert.deepEqual(argv, ['-t', '10']);
   });
 
   it('exposes setInputDuration as a synonym (matches setStartTime / seekInput pair)', () => {
@@ -32,8 +32,8 @@ describe('durationInput / setInputDuration (issue #53)', () => {
   it('chains with seekInput in either order', () => {
     const a: FfmpegInst = new Ffmpeg().input('a.mp4').seekInput(5).durationInput(10);
     const b: FfmpegInst = new Ffmpeg().input('b.mp4').durationInput(10).seekInput(5);
-    assert.deepEqual(a._inputs[0].options.get(), ['-ss', 5, '-t', 10]);
-    assert.deepEqual(b._inputs[0].options.get(), ['-t', 10, '-ss', 5]);
+    assert.deepEqual(a._inputs[0].options.get(), ['-ss', '5', '-t', '10']);
+    assert.deepEqual(b._inputs[0].options.get(), ['-t', '10', '-ss', '5']);
   });
 
   it('applies independently to multiple inputs', () => {
@@ -44,8 +44,8 @@ describe('durationInput / setInputDuration (issue #53)', () => {
       .input('second.mp4')
       .seekInput(100)
       .durationInput(15);
-    assert.deepEqual(cmd._inputs[0].options.get(), ['-ss', 0, '-t', 10]);
-    assert.deepEqual(cmd._inputs[1].options.get(), ['-ss', 100, '-t', 15]);
+    assert.deepEqual(cmd._inputs[0].options.get(), ['-ss', '0', '-t', '10']);
+    assert.deepEqual(cmd._inputs[1].options.get(), ['-ss', '100', '-t', '15']);
   });
 
   it('throws "No input specified" when called before .input() (consistent with seekInput)', () => {
@@ -67,7 +67,7 @@ describe('durationInput / setInputDuration (issue #53)', () => {
     const i2 = argv.indexOf('-i', i1 + 1);
     assert.notEqual(i1, -1);
     assert.notEqual(i2, -1);
-    assert.deepEqual(argv.slice(i1 - 2, i1), ['-t', 10]);
-    assert.deepEqual(argv.slice(i2 - 2, i2), ['-t', 20]);
+    assert.deepEqual(argv.slice(i1 - 2, i1), ['-t', '10']);
+    assert.deepEqual(argv.slice(i2 - 2, i2), ['-t', '20']);
   });
 });

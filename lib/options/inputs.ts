@@ -87,7 +87,8 @@ function applyInputsOptions(proto: FfmpegCommandPrototype): void {
     if (!this._currentInput) {
       throw new Error('No input specified');
     }
-    this._currentInput.options('-ss', seek);
+    const value = typeof seek === 'number' ? utils.formatNumberForCall(seek) : seek;
+    this._currentInput.options('-ss', value);
     return this;
   };
 
@@ -102,7 +103,8 @@ function applyInputsOptions(proto: FfmpegCommandPrototype): void {
     if (!this._currentInput) {
       throw new Error('No input specified');
     }
-    this._currentInput.options('-t', duration);
+    const value = typeof duration === 'number' ? utils.formatNumberForCall(duration) : duration;
+    this._currentInput.options('-t', value);
     return this;
   };
 

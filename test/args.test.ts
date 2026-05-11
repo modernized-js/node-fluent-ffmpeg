@@ -375,7 +375,7 @@ describe('Command', () => {
       assert.ok(!err);
       assert.ok(args!.indexOf('-loop') !== -1 || args!.indexOf('-loop_output') !== -1);
       assert.ok(args!.indexOf('-t') > -1);
-      assert.ok(args!.indexOf(120) > -1);
+      assert.ok(args!.indexOf('120') > -1);
     });
 
     it('should add the -loop 1 and a time argument (timemark)', () => {
@@ -517,7 +517,7 @@ describe('Command', () => {
       testhelper.logArgError(err);
       assert.ok(!err);
       assert.ok(args!.indexOf('-t') > -1);
-      assert.ok(args!.indexOf(10) > -1);
+      assert.ok(args!.indexOf('10') > -1);
     });
   });
 

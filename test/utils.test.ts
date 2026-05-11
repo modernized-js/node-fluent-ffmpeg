@@ -580,7 +580,16 @@ describe('utils.extractCodecData', () => {
     const state: CodecState = {};
     utils.extractCodecData(command, 'Input #0, mov,mp4,m4a, from foo.mp4', state);
     assert.deepEqual(state, {
-      inputStack: [{ format: 'mov,mp4,m4a', audio: '', video: '', duration: '' }],
+      inputStack: [
+        {
+          format: 'mov,mp4,m4a',
+          audio: '',
+          audio_details: [],
+          video: '',
+          video_details: [],
+          duration: '',
+        },
+      ],
       inputIndex: 0,
       inInput: true,
     });
@@ -610,6 +619,31 @@ describe('utils.extractCodecData', () => {
     utils.extractCodecData(command, '  Stream #0:1: Video: h264, yuv420p, 1024x768', state);
     assert.equal(state.inputStack?.[0]?.video, 'h264');
     assert.deepEqual(state.inputStack?.[0]?.video_details, ['h264', 'yuv420p', '1024x768']);
+  });
+
+  // --- Regression for upstream fluent-ffmpeg#1301 ---------------------
+  //
+  // For inputs with only an audio stream (or only a video stream) the
+  // counterpart `*_details` field was `undefined`. Consumers
+  // destructuring `audio_details.length` on the `codecData` event then
+  // crashed. Initialise both arrays up-front so destructuring is always
+  // safe; the populated side is replaced when a Stream:line matches.
+
+  it('exposes empty audio_details / video_details on a fresh input record', () => {
+    const command = makeEmitter();
+    const state: CodecState = {};
+    utils.extractCodecData(command, 'Input #0, mp3, from audio-only.mp3', state);
+    assert.deepEqual(state.inputStack?.[0]?.audio_details, []);
+    assert.deepEqual(state.inputStack?.[0]?.video_details, []);
+  });
+
+  it('leaves the unrelated *_details array empty for an audio-only input', () => {
+    const command = makeEmitter();
+    const state: CodecState = {};
+    utils.extractCodecData(command, 'Input #0, mp3, from audio-only.mp3', state);
+    utils.extractCodecData(command, '  Stream #0:0: Audio: mp3, 44100 Hz, stereo', state);
+    assert.deepEqual(state.inputStack?.[0]?.audio_details, ['mp3', '44100 Hz', 'stereo']);
+    assert.deepEqual(state.inputStack?.[0]?.video_details, []);
   });
 
   it('flips inInput off when an "Output #" line arrives', () => {
@@ -811,6 +845,41 @@ describe('utils.extractProgress', () => {
     assert.equal(data.targetSize, 0);
   });
 
+  // --- Regression for upstream fluent-ffmpeg#928 -----------------------
+  //
+  // `-loglevel +level` prepends `[info]` / `[warning]` / `[error]` to
+  // every stderr line. The previous parser required every
+  // space-separated token to look like `key=value`; `[info]` had no `=`
+  // so the entire line was rejected and no `progress` event fired.
+
+  it('parses a progress line with a leading [info] loglevel prefix (issue: upstream #928)', () => {
+    const command = makeCommand();
+    utils.extractProgress(
+      command,
+      '[info] frame=1668 fps=0.0 q=-0.0 size=N/A time=00:00:55.90 bitrate=N/A speed=112x',
+    );
+    assert.equal(command.progresses.length, 1, 'progress must still fire under -loglevel +level');
+    const [data] = command.progresses;
+    assert.equal(data.frames, 1668);
+    assert.equal(data.timemark, '00:00:55.90');
+  });
+
+  it('strips other loglevel prefixes too (warning / error / verbose)', () => {
+    const command = makeCommand();
+    utils.extractProgress(
+      command,
+      '[warning] frame=10 fps=20 size=100 time=00:00:01.00 bitrate=8kbits/s',
+    );
+    assert.equal(command.progresses.length, 1);
+  });
+
+  it('leaves regular non-prefixed progress lines unchanged (no regression)', () => {
+    const command = makeCommand();
+    utils.extractProgress(command, 'frame=99 fps=30 size=50 time=00:00:03.30 bitrate=4kbits/s');
+    assert.equal(command.progresses.length, 1);
+    assert.equal(command.progresses[0].frames, 99);
+  });
+
   it('regression: a fully-numeric progress line still reports the numeric values (no behaviour change)', () => {
     const command = makeCommand();
     utils.extractProgress(
@@ -823,6 +892,39 @@ describe('utils.extractProgress', () => {
     assert.equal(data.currentKbps, 2000);
     assert.equal(data.targetSize, 1024);
     assert.equal(data.timemark, '00:00:04.00');
+  });
+});
+
+describe('utils.formatNumberForCall', () => {
+  // --- Regression for upstream fluent-ffmpeg#1131 ----------------------
+  //
+  // `seekInput(1e-7)` previously produced the argv token `1e-7`, which
+  // ffmpeg rejects. JavaScript's default `String(n)` falls back to
+  // scientific notation for very small / very large finite numbers;
+  // ffmpeg's CLI parser does not understand that form.
+
+  it('integer round-trips as a plain integer string', () => {
+    assert.equal(utils.formatNumberForCall(10), '10');
+    assert.equal(utils.formatNumberForCall(0), '0');
+  });
+
+  it('plain decimal stays in fixed-point form', () => {
+    assert.equal(utils.formatNumberForCall(1.5), '1.5');
+    assert.equal(utils.formatNumberForCall(123.456), '123.456');
+  });
+
+  it('expands very small fractions out of scientific notation (the fix)', () => {
+    // 1e-7 = 0.0000001 — well within our 10-digit max-fraction budget.
+    assert.equal(utils.formatNumberForCall(1e-7), '0.0000001');
+  });
+
+  it('handles negative values without losing the sign', () => {
+    assert.equal(utils.formatNumberForCall(-0.5), '-0.5');
+  });
+
+  it('passes non-finite values through (NaN / Infinity stay as String() reports them)', () => {
+    assert.equal(utils.formatNumberForCall(Number.NaN), 'NaN');
+    assert.equal(utils.formatNumberForCall(Number.POSITIVE_INFINITY), 'Infinity');
   });
 });
 
