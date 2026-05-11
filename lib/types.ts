@@ -56,6 +56,11 @@ export interface CommandLike {
   _ffprobeData?: FfprobeData;
 }
 
+export interface ReportingError extends Error {
+  inputStreamError?: Error;
+  outputStreamError?: Error;
+}
+
 export interface InputState {
   source: string | Readable;
   isFile: boolean;
@@ -271,8 +276,8 @@ export interface ScreenshotsConfig {
   count?: number;
   folder?: string;
   filename?: string;
-  timemarks?: number[] | string[];
-  timestamps?: number[] | string[];
+  timemarks?: (string | number)[];
+  timestamps?: (string | number)[];
   fastSeek?: boolean;
   size?: string;
 }
@@ -516,9 +521,9 @@ export interface FfmpegCommandThis extends EventEmitter {
   // recipes
   saveToFile(output: string): this;
   save(output: string): this;
-  writeToStream(stream: Writable, options?: PipeOptions): Writable;
-  pipe(stream?: Writable, options?: PipeOptions): Writable;
-  stream(stream: Writable, options?: PipeOptions): Writable;
+  writeToStream(stream?: Writable | PipeOptions, options?: PipeOptions): Writable;
+  pipe(stream?: Writable | PipeOptions, options?: PipeOptions): Writable;
+  stream(stream?: Writable | PipeOptions, options?: PipeOptions): Writable;
   takeScreenshots(config: number | ScreenshotsConfig, folder?: string): this;
   thumbnail(config: number | ScreenshotsConfig, folder?: string): this;
   thumbnails(config: number | ScreenshotsConfig, folder?: string): this;
@@ -532,10 +537,10 @@ export interface FfmpegCommandThis extends EventEmitter {
   on(event: 'start', listener: (command: string) => void): this;
   on(event: 'progress', listener: (progress: ProgressReport) => void): this;
   on(event: 'stderr', listener: (line: string) => void): this;
-  on(event: 'codecData', listener: (codecData: InputInfo) => void): this;
+  on(event: 'codecData', listener: (...codecData: InputInfo[]) => void): this;
   on(
     event: 'error',
-    listener: (error: Error, stdout: string | null, stderr: string | null) => void,
+    listener: (error: ReportingError, stdout: string | null, stderr: string | null) => void,
   ): this;
   on(event: 'filenames', listener: (filenames: string[]) => void): this;
   on(event: 'end', listener: (stdout: string | null, stderr: string | null) => void): this;

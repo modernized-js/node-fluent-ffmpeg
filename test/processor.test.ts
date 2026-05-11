@@ -4,9 +4,10 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { access, unlink, rmdir, stat, readdir } from 'node:fs/promises';
 import stream from 'node:stream';
-import EventEmitter from 'node:events';
-import { exec } from 'node:child_process';
+import { exec, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
+
+import type { FfmpegCommandOptions, FfmpegCommandThis } from '../lib/types.js';
 
 const require = createRequire(__filename);
 const FfmpegCommand = require('../index.js');
@@ -28,43 +29,20 @@ const testfileaudio1 = path.join(testdir, 'testaudio-one.wav');
 const testfileaudio2 = path.join(testdir, 'testaudio-two.wav');
 const testfileaudio3 = path.join(testdir, 'testaudio-three.wav');
 
-interface FfmpegProc {
-  pid?: number;
-  on: (event: string, cb: (...args: unknown[]) => void) => void;
-}
+type FfmpegInst = FfmpegCommandThis;
 
-interface FfmpegInst extends EventEmitter {
-  ffmpegProc: FfmpegProc;
-  usingPreset: (name: string) => FfmpegInst;
-  saveToFile: (p: string) => FfmpegInst;
-  takeScreenshots: (config: unknown, folder?: string) => FfmpegInst;
-  writeToStream: (s?: unknown, opts?: unknown) => unknown;
-  mergeAdd: (p: string) => FfmpegInst;
-  mergeToFile: (p: string) => FfmpegInst;
-  output: (p: string) => FfmpegInst;
-  withAudioCodec: (c: string) => FfmpegInst;
-  withVideoCodec: (c: string) => FfmpegInst;
-  withSize: (s: string) => FfmpegInst;
-  takeFrames: (n: number) => FfmpegInst;
-  addOption: (...a: unknown[]) => FfmpegInst;
-  renice: (n: number) => FfmpegInst;
-  kill: (signal?: string) => FfmpegInst;
-  run: () => FfmpegInst;
-  options: { niceness: number };
-  input: (p: unknown) => FfmpegInst;
-}
-
-let processes: FfmpegProc[] = [];
-let outputs: [string | undefined, string | undefined][] = [];
+let processes: ChildProcess[] = [];
+let outputs: [string | null, string | null][] = [];
 let files: string[] = [];
 let dirs: string[] = [];
 
-function makeCommand(args?: unknown): FfmpegInst {
-  const cmd = new FfmpegCommand(args);
+function makeCommand(args?: FfmpegCommandOptions): FfmpegInst {
+  const cmd: FfmpegInst = new FfmpegCommand(args);
   cmd.on('start', () => {
     // Capture proc here — by the time 'exit' fires, processor.ts has already
     // deleted cmd.ffmpegProc in its endCB, so a deferred lookup misses the splice.
     const proc = cmd.ffmpegProc;
+    if (!proc) return;
     processes.push(proc);
     proc.on('exit', () => {
       const idx = processes.indexOf(proc);
@@ -74,7 +52,7 @@ function makeCommand(args?: unknown): FfmpegInst {
   return cmd;
 }
 
-function saveOutput(stdout: string | undefined, stderr: string | undefined): void {
+function saveOutput(stdout: string | null, stderr: string | null): void {
   outputs.unshift([stdout, stderr]);
 }
 
@@ -166,9 +144,11 @@ describe('Processor', () => {
         command
           .usingPreset('divx')
           .on('start', () => {
-            command.ffmpegProc.on('exit', () => resolve());
+            const proc = command.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', () => resolve());
           })
-          .on('error', (err: Error, stdout: string, stderr: string) => {
+          .on('error', (err, stdout, stderr) => {
             saveOutput(stdout, stderr);
             try {
               assert.notEqual(err.message.indexOf('timeout'), -1);
@@ -233,7 +213,9 @@ describe('Processor', () => {
           .on('start', () => {
             startCalled = true;
             setTimeout(() => ffmpegJob.kill(), 500);
-            ffmpegJob.ffmpegProc.on('exit', onExitSettleAndVerify);
+            const proc = ffmpegJob.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', onExitSettleAndVerify);
           })
           .on('error', (err: Error) => {
             try {
@@ -266,7 +248,9 @@ describe('Processor', () => {
           .on('start', () => {
             startCalled = true;
             setTimeout(() => ffmpegJob.kill('SIGSTOP'), 500);
-            ffmpegJob.ffmpegProc.on('exit', () => {
+            const proc = ffmpegJob.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', () => {
               try {
                 assert.equal(errorCalled, true);
                 resolve();
@@ -460,10 +444,10 @@ describe('Processor', () => {
             testhelper.logError(err, stdout, stderr);
             reject(err);
           })
-          .on('end', (stdout: string, stderr: string) => {
+          .on('end', (stdout, stderr) => {
             try {
-              assert.ok(stdout.split('\n').length < 11);
-              assert.ok(stderr.split('\n').length < 11);
+              assert.ok((stdout ?? '').split('\n').length < 11);
+              assert.ok((stderr ?? '').split('\n').length < 11);
               resolve();
             } catch (e) {
               reject(testhelper.toError(e));
@@ -704,7 +688,9 @@ describe('Processor', () => {
           .usingPreset('divx')
           .on('start', () => {
             startCalled = true;
-            command.ffmpegProc.on('exit', async () => {
+            const proc = command.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', async () => {
               try {
                 // eslint-disable-next-line sonarjs/publicly-writable-directories -- negative-path: asserts file does NOT exist after ffmpeg failure
                 assert.equal(await exists('/tmp/will-not-be-created.avi'), false);
@@ -714,20 +700,17 @@ describe('Processor', () => {
               }
             });
           })
-          .on(
-            'error',
-            (err: Error & { inputStreamError?: Error }, stdout: string, stderr: string) => {
-              saveOutput(stdout, stderr);
-              try {
-                assert.equal(startCalled, true);
-                assert.ok(err);
-                assert.equal(err.message.indexOf('Input stream error: '), 0);
-                assert.equal(err.inputStreamError, readError);
-              } catch (e) {
-                reject(testhelper.toError(e));
-              }
-            },
-          )
+          .on('error', (err, stdout, stderr) => {
+            saveOutput(stdout, stderr);
+            try {
+              assert.equal(startCalled, true);
+              assert.ok(err);
+              assert.equal(err.message.indexOf('Input stream error: '), 0);
+              assert.equal(err.inputStreamError, readError);
+            } catch (e) {
+              reject(testhelper.toError(e));
+            }
+          })
           .on('end', () => reject(new Error('end was called, expected an error')))
           // eslint-disable-next-line sonarjs/publicly-writable-directories -- negative-path: ffmpeg fails on input stream error before any write
           .saveToFile('/tmp/will-not-be-created.avi');
@@ -864,22 +847,21 @@ describe('Processor', () => {
           .usingPreset('divx')
           .on('start', () => {
             startCalled = true;
-            command.ffmpegProc.on('exit', () => resolve());
+            const proc = command.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', () => resolve());
           })
-          .on(
-            'error',
-            (err: Error & { outputStreamError?: Error }, stdout: string, stderr: string) => {
-              saveOutput(stdout, stderr);
-              try {
-                assert.equal(startCalled, true);
-                assert.ok(err);
-                assert.equal(err.message.indexOf('Output stream error: '), 0);
-                assert.equal(err.outputStreamError, writeError);
-              } catch (e) {
-                reject(testhelper.toError(e));
-              }
-            },
-          )
+          .on('error', (err, stdout, stderr) => {
+            saveOutput(stdout, stderr);
+            try {
+              assert.equal(startCalled, true);
+              assert.ok(err);
+              assert.equal(err.message.indexOf('Output stream error: '), 0);
+              assert.equal(err.outputStreamError, writeError);
+            } catch (e) {
+              reject(testhelper.toError(e));
+            }
+          })
           .on('end', () => reject(new Error('end was called, expected an error')))
           .writeToStream(outstream);
       });
@@ -1071,7 +1053,9 @@ describe('Processor', () => {
             // local hardware the 5-minute divx encode can finish within ~1s,
             // so kill early. CI runners stay well above this even at 50ms.
             setTimeout(() => command.kill('SIGKILL'), 50);
-            command.ffmpegProc.on('exit', () => {
+            const proc = command.ffmpegProc;
+            if (!proc) return;
+            proc.on('exit', () => {
               exited = true;
               tryFinish();
             });

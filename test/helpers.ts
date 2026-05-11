@@ -67,7 +67,11 @@ function logArgError(err?: ErrorWithFfmpeg | null): void {
   dumpFfmpegError(err);
 }
 
-function logError(err?: ErrorWithFfmpeg | null, stdout?: string, stderr?: string): void {
+function logError(
+  err?: ErrorWithFfmpeg | null,
+  stdout?: string | null,
+  stderr?: string | null,
+): void {
   if (err) dumpFfmpegError(err, 'metadata ');
   if (stdout) {
     console.log('---stdout---');
@@ -79,7 +83,7 @@ function logError(err?: ErrorWithFfmpeg | null, stdout?: string, stderr?: string
   }
 }
 
-function logOutput(stdout?: string, stderr?: string): void {
+function logOutput(stdout?: string | null, stderr?: string | null): void {
   if (stdout) {
     console.log('---stdout---');
     console.log(stdout);

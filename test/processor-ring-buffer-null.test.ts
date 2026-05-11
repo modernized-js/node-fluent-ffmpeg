@@ -7,6 +7,7 @@ import type {
   FfprobeCallback,
   PathCallback,
   ProcessCallback,
+  ReportingError,
   SpawnEndCallback,
   SpawnOptions,
 } from '../lib/types.js';
@@ -28,7 +29,7 @@ interface MockableFfmpegCommand {
   on: {
     (
       event: 'error',
-      listener: (err: Error, stdout: string | null, stderr: string | null) => void,
+      listener: (err: ReportingError, stdout: string | null, stderr: string | null) => void,
     ): MockableFfmpegCommand;
     (event: 'end', listener: () => void): MockableFfmpegCommand;
     (event: string, listener: (...args: unknown[]) => void): MockableFfmpegCommand;

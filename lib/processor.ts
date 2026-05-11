@@ -10,6 +10,7 @@ import type {
   OutputState,
   PrepareCallback,
   ProcessCallback,
+  ReportingError,
   SpawnEndCallback,
   SpawnOptions,
 } from './types.js';
@@ -23,11 +24,6 @@ const NICENESS_MAX = 20;
 // every platform we ship to (verified in mulmocast-cli CI).
 const OUTPUT_STREAM_GRACE_MS = 250;
 const MS_PER_SECOND = 1000;
-
-interface ReportingError extends Error {
-  inputStreamError?: Error;
-  outputStreamError?: Error;
-}
 
 function isStreamInput(input: InputState): boolean {
   return input.isStream;
