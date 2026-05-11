@@ -4,6 +4,8 @@ All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format f
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-12
+
 ### Fixed
 
 - **Scientific-notation in `seekInput` / `setStartTime` / `durationInput` / `setInputDuration` / `seek` / `seekOutput` / `duration` / `setDuration` / `withDuration`.** A numeric argument that JavaScript stringifies to scientific notation (e.g. `duration(1e-7)` → `'1e-7'`) was passed verbatim to ffmpeg, which rejects the form. Numeric inputs now flow through a new `utils.formatNumberForCall()` helper (built on `Intl.NumberFormat('en-US', { useGrouping: false, maximumFractionDigits: 10 })`) so the argv token is always a fixed-point string. Mirrors upstream [fluent-ffmpeg#1131](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/pull/1131). **De facto behaviour change**: the internal option list now always stores these args as `string` (e.g. `['-t', '10']`) instead of preserving the input `number` (`['-t', 10]`). The eventual ffmpeg argv is unchanged (both forms become `'10'` at spawn time); only consumers that introspect `cmd._inputs[i].options.get()` or `cmd._getArguments()` and assert on the element type see the difference.
