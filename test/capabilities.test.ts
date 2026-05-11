@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
+import type { CodecInfo, EncoderInfo, FilterInfo, FormatInfo } from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 const testhelper = require('./helpers.js');
@@ -40,7 +42,7 @@ function fromCallback<T>(invoke: (cb: Callback<T>) => void): Promise<T> {
 describe('Capabilities', () => {
   describe('ffmpeg capabilities', () => {
     ffmpegIt('should enable querying for available codecs', async () => {
-      const codecs = await fromCallback<Record<string, Record<string, unknown>>>((cb) =>
+      const codecs = await fromCallback<Record<string, CodecInfo>>((cb) =>
         new Ffmpeg({ source: '' }).getAvailableCodecs(cb),
       );
       assert.equal(typeof codecs, 'object');
@@ -57,7 +59,7 @@ describe('Capabilities', () => {
     });
 
     ffmpegIt('should enable querying for available encoders', async () => {
-      const encoders = await fromCallback<Record<string, Record<string, unknown>>>((cb) =>
+      const encoders = await fromCallback<Record<string, EncoderInfo>>((cb) =>
         new Ffmpeg({ source: '' }).getAvailableEncoders(cb),
       );
       assert.equal(typeof encoders, 'object');
@@ -72,7 +74,7 @@ describe('Capabilities', () => {
     });
 
     ffmpegIt('should enable querying for available formats', async () => {
-      const formats = await fromCallback<Record<string, Record<string, unknown>>>((cb) =>
+      const formats = await fromCallback<Record<string, FormatInfo>>((cb) =>
         new Ffmpeg({ source: '' }).getAvailableFormats(cb),
       );
       assert.equal(typeof formats, 'object');
@@ -87,7 +89,7 @@ describe('Capabilities', () => {
     });
 
     ffmpegIt('should enable querying for available filters', async () => {
-      const filters = await fromCallback<Record<string, Record<string, unknown>>>((cb) =>
+      const filters = await fromCallback<Record<string, FilterInfo>>((cb) =>
         new Ffmpeg({ source: '' }).getAvailableFilters(cb),
       );
       assert.equal(typeof filters, 'object');
@@ -106,17 +108,17 @@ describe('Capabilities', () => {
     });
 
     ffmpegIt('should enable querying capabilities without instanciating a command', async () => {
-      const codecs = await fromCallback<Record<string, unknown>>((cb) =>
+      const codecs = await fromCallback<Record<string, CodecInfo>>((cb) =>
         Ffmpeg.getAvailableCodecs(cb),
       );
       assert.equal(typeof codecs, 'object');
       assert.notEqual(Object.keys(codecs).length, 0);
-      const filters = await fromCallback<Record<string, unknown>>((cb) =>
+      const filters = await fromCallback<Record<string, FilterInfo>>((cb) =>
         Ffmpeg.getAvailableFilters(cb),
       );
       assert.equal(typeof filters, 'object');
       assert.notEqual(Object.keys(filters).length, 0);
-      const formats = await fromCallback<Record<string, unknown>>((cb) =>
+      const formats = await fromCallback<Record<string, FormatInfo>>((cb) =>
         Ffmpeg.getAvailableFormats(cb),
       );
       assert.equal(typeof formats, 'object');

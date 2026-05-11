@@ -2,18 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
+import type { FfmpegCommandThis } from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 
-interface FfmpegInst {
-  input: (p: string) => FfmpegInst;
-  seekInput: (s: string | number) => FfmpegInst;
-  durationInput: (d: string | number) => FfmpegInst;
-  setInputDuration: (d: string | number) => FfmpegInst;
-  output: (p: string) => FfmpegInst;
-  _inputs: { options: { get: () => unknown[] } }[];
-  _getArguments: () => unknown[];
-}
+type FfmpegInst = FfmpegCommandThis;
 
 // --- Feature for issue #53 / upstream #1247 -----------------------------
 //

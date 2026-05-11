@@ -4,19 +4,13 @@ import path from 'node:path';
 import { unlink, access } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
+import type { FfmpegCommandThis, ProgressReport } from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 const testhelper = require('./helpers.js');
 
-interface FfmpegInst {
-  on: (event: string, listener: (...args: unknown[]) => unknown) => FfmpegInst;
-  emit: (event: string, ...args: unknown[]) => boolean;
-  saveToFile: (p: string) => FfmpegInst;
-  takeFrames: (n: number) => FfmpegInst;
-  withVideoCodec: (c: string) => FfmpegInst;
-  withAudioCodec: (c: string) => FfmpegInst;
-  withSize: (s: string) => FfmpegInst;
-}
+type FfmpegInst = FfmpegCommandThis;
 
 const ffmpegInPath = testhelper.isCommandInPath('ffmpeg');
 const ffmpegIt = ffmpegInPath ? it : it.skip;
@@ -66,8 +60,8 @@ describe('Progress event regression for upstream #935 / #979', () => {
   it('progress events emitted on one command do not leak to another command', () => {
     const a: FfmpegInst = new Ffmpeg({ source: testfile });
     const b: FfmpegInst = new Ffmpeg({ source: testfile });
-    const aProgresses: unknown[] = [];
-    const bProgresses: unknown[] = [];
+    const aProgresses: ProgressReport[] = [];
+    const bProgresses: ProgressReport[] = [];
     a.on('progress', (p) => {
       aProgresses.push(p);
     });
@@ -99,7 +93,7 @@ describe('Progress event regression for upstream #935 / #979', () => {
           .on('progress', () => {
             progressCount += 1;
           })
-          .on('error', (err: unknown) => reject(testhelper.toError(err)))
+          .on('error', (err) => reject(testhelper.toError(err)))
           .on('end', () => resolve(progressCount))
           .saveToFile(output);
       });

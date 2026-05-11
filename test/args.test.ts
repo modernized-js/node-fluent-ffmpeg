@@ -10,27 +10,34 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
+import type { ArgValue, FfmpegCommandThis, FilterSpec } from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 const utils = require('../lib/utils.js');
 const testhelper = require('./helpers.js');
 
-interface FfmpegInstance {
-  _getArguments: () => unknown[];
-  _currentOutput: { sizeFilters: { get: () => unknown[] }; videoFilters: { get: () => unknown[] } };
-}
-
-function tryGetArgs(cmd: FfmpegInstance): { args?: unknown[]; err?: Error } {
+function tryGetArgs(cmd: FfmpegCommandThis): { args?: ArgValue[]; err?: Error } {
   try {
     return { args: cmd._getArguments() };
   } catch (e) {
-    return { err: e as Error };
+    return { err: testhelper.toError(e) };
   }
 }
 
-function getSizeFilters(cmd: FfmpegInstance): string[] {
-  const sizes = utils.makeFilterStrings(cmd._currentOutput.sizeFilters.get()) as string[];
-  return sizes.concat(cmd._currentOutput.videoFilters.get() as string[]);
+// ArgList stores ArgValue (= string | number | FilterSpec) but the runtime
+// invariant for these specific ArgLists is narrower: sizeFilters only ever
+// holds FilterSpec / string entries, videoFilters only holds strings.
+// Filter at the type-system boundary rather than casting (no-op at runtime
+// since the invariant always holds; this is the TS-honest expression of it).
+const isStringOrSpec = (v: ArgValue): v is string | FilterSpec => typeof v !== 'number';
+const isString = (v: ArgValue): v is string => typeof v === 'string';
+
+function getSizeFilters(cmd: FfmpegCommandThis): string[] {
+  const sizeSpecs = cmd._currentOutput!.sizeFilters.get().filter(isStringOrSpec);
+  const sizes: string[] = utils.makeFilterStrings(sizeSpecs);
+  const videoFilters = cmd._currentOutput!.videoFilters.get().filter(isString);
+  return sizes.concat(videoFilters);
 }
 
 // These tests only exercise FfmpegCommand argument-list generation; they don't
@@ -69,11 +76,8 @@ describe('Command', () => {
     });
 
     it('should allow using functions as presets', () => {
-      let presetArg: unknown;
-      function presetFunc(command: {
-        withVideoCodec: (c: string) => unknown;
-        withAudioFrequency: (n: number) => unknown;
-      }) {
+      let presetArg: FfmpegCommandThis | undefined;
+      function presetFunc(command: FfmpegCommandThis): void {
         presetArg = command;
         command.withVideoCodec('libx264');
         command.withAudioFrequency(22050);
@@ -565,7 +569,7 @@ describe('Command', () => {
       );
       testhelper.logArgError(err);
       assert.ok(!err);
-      const joined = (args as unknown[]).join(' ');
+      const joined = args!.join(' ');
       const r = joined.indexOf('-r 29.97');
       const i = joined.indexOf('-i ');
       assert.ok(r > -1 && r < i);
@@ -579,7 +583,7 @@ describe('Command', () => {
       const { args, err } = tryGetArgs(cmd);
       testhelper.logArgError(err);
       assert.ok(!err);
-      const joined = (args as unknown[]).join(' ');
+      const joined = args!.join(' ');
       const i = joined.indexOf('-i');
       ['-r 29.97', '-f ogg', '-single option', '-multiple', '-options'].forEach((tok) => {
         const idx = joined.indexOf(tok);
@@ -674,7 +678,7 @@ describe('Command', () => {
     });
 
     it('Should add proper scale filter when withSize was called with a "?" and no aspect ratio is specified', () => {
-      const expectations: [() => unknown, string][] = [
+      const expectations: [() => FfmpegCommandThis, string][] = [
         [
           () => new Ffmpeg({ source: testfile, logger: testhelper.logger }).withSize('100x?'),
           'scale=w=100:h=trunc(ow/a/2)*2',
@@ -699,7 +703,7 @@ describe('Command', () => {
         ],
       ];
       for (const [makeCmd, expected] of expectations) {
-        const filters = getSizeFilters(makeCmd() as FfmpegInstance);
+        const filters = getSizeFilters(makeCmd());
         assert.equal(filters.length, 1);
         assert.equal(filters[0], expected);
       }
@@ -903,38 +907,34 @@ describe('Command', () => {
 
   describe('complexFilter', () => {
     it('should generate a complex filter from a single filter', () => {
-      const filters = (
-        new Ffmpeg().complexFilter('filterstring') as FfmpegInstance
-      )._getArguments();
+      const filters = new Ffmpeg().complexFilter('filterstring')._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(filters[0], '-filter_complex');
       assert.equal(filters[1], 'filterstring');
     });
 
     it('should generate a complex filter from a filter array', () => {
-      const filters = (
-        new Ffmpeg().complexFilter(['filter1', 'filter2']) as FfmpegInstance
-      )._getArguments();
+      const filters = new Ffmpeg().complexFilter(['filter1', 'filter2'])._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(filters[1], 'filter1;filter2');
     });
 
     it('should support filter objects', () => {
-      const filters = (
-        new Ffmpeg().complexFilter(['filter1', { filter: 'filter2' }]) as FfmpegInstance
-      )._getArguments();
+      const filters = new Ffmpeg()
+        .complexFilter(['filter1', { filter: 'filter2' }])
+        ._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(filters[1], 'filter1;filter2');
     });
 
     it('should support filter options', () => {
-      const filters = (
-        new Ffmpeg().complexFilter([
+      const filters = new Ffmpeg()
+        .complexFilter([
           { filter: 'filter1', options: 'optionstring' },
           { filter: 'filter2', options: ['opt1', 'opt2', 'opt3'] },
           { filter: 'filter3', options: { opt1: 'value1', opt2: 'value2' } },
-        ]) as FfmpegInstance
-      )._getArguments();
+        ])
+        ._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(
         filters[1],
@@ -943,13 +943,13 @@ describe('Command', () => {
     });
 
     it('should escape filter options with ambiguous characters', () => {
-      const filters = (
-        new Ffmpeg().complexFilter([
+      const filters = new Ffmpeg()
+        .complexFilter([
           { filter: 'filter1', options: 'optionstring' },
           { filter: 'filter2', options: ['op,t1', 'op,t2', 'op,t3'] },
           { filter: 'filter3', options: { opt1: 'val,ue1', opt2: 'val,ue2' } },
-        ]) as FfmpegInstance
-      )._getArguments();
+        ])
+        ._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(
         filters[1],
@@ -958,25 +958,25 @@ describe('Command', () => {
     });
 
     it('should support filter input streams', () => {
-      const filters = (
-        new Ffmpeg().complexFilter([
+      const filters = new Ffmpeg()
+        .complexFilter([
           { filter: 'filter1', inputs: 'input' },
           { filter: 'filter2', inputs: '[input]' },
           { filter: 'filter3', inputs: ['[input1]', 'input2'] },
-        ]) as FfmpegInstance
-      )._getArguments();
+        ])
+        ._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(filters[1], '[input]filter1;[input]filter2;[input1][input2]filter3');
     });
 
     it('should support filter output streams', () => {
-      const filters = (
-        new Ffmpeg().complexFilter([
+      const filters = new Ffmpeg()
+        .complexFilter([
           { filter: 'filter1', options: 'opt', outputs: 'output' },
           { filter: 'filter2', options: 'opt', outputs: '[output]' },
           { filter: 'filter3', options: 'opt', outputs: ['[output1]', 'output2'] },
-        ]) as FfmpegInstance
-      )._getArguments();
+        ])
+        ._getArguments();
       assert.equal(filters.length, 2);
       assert.equal(
         filters[1],
@@ -985,26 +985,19 @@ describe('Command', () => {
     });
 
     it('should support an additional mapping argument', () => {
-      let filters = (
-        new Ffmpeg().complexFilter(['filter1', 'filter2'], 'output') as FfmpegInstance
-      )._getArguments();
+      let filters = new Ffmpeg().complexFilter(['filter1', 'filter2'], 'output')._getArguments();
       assert.equal(filters.length, 4);
       assert.equal(filters[2], '-map');
       assert.equal(filters[3], '[output]');
 
-      filters = (
-        new Ffmpeg().complexFilter(['filter1', 'filter2'], '[output]') as FfmpegInstance
-      )._getArguments();
+      filters = new Ffmpeg().complexFilter(['filter1', 'filter2'], '[output]')._getArguments();
       assert.equal(filters.length, 4);
       assert.equal(filters[2], '-map');
       assert.equal(filters[3], '[output]');
 
-      filters = (
-        new Ffmpeg().complexFilter(
-          ['filter1', 'filter2'],
-          ['[output1]', 'output2'],
-        ) as FfmpegInstance
-      )._getArguments();
+      filters = new Ffmpeg()
+        .complexFilter(['filter1', 'filter2'], ['[output1]', 'output2'])
+        ._getArguments();
       assert.equal(filters.length, 6);
       assert.equal(filters[2], '-map');
       assert.equal(filters[3], '[output1]');
@@ -1013,11 +1006,10 @@ describe('Command', () => {
     });
 
     it('should override any previously set complex filtergraphs', () => {
-      const filters = (
-        new Ffmpeg()
-          .complexFilter(['filter1a', 'filter1b'], 'output1')
-          .complexFilter(['filter2a', 'filter2b'], 'output2') as FfmpegInstance
-      )._getArguments();
+      const filters = new Ffmpeg()
+        .complexFilter(['filter1a', 'filter1b'], 'output1')
+        .complexFilter(['filter2a', 'filter2b'], 'output2')
+        ._getArguments();
       assert.equal(filters.length, 4);
       assert.equal(filters[1], 'filter2a;filter2b');
       assert.equal(filters[2], '-map');

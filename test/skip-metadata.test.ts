@@ -2,20 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
+import type { FfmpegCommandThis } from '../lib/types.js';
+
 const require = createRequire(__filename);
 const Ffmpeg = require('../index.js');
 
-interface MockableFfmpegCommand {
-  options: { skipMetadata?: boolean };
-  ffprobe: (...args: unknown[]) => void;
-  on: (event: string, listener: (...args: unknown[]) => unknown) => MockableFfmpegCommand;
-  _checkCapabilities: (cb: (err?: Error | null) => void) => void;
-  _getFfmpegPath: (cb: (err: Error | null, p?: string) => void) => void;
-  _getFlvtoolPath: (cb: (err: Error | null, p?: string) => void) => void;
-  _spawnFfmpeg: (...args: unknown[]) => void;
-  availableEncoders: (cb: (err: Error | null, e?: unknown) => void) => void;
-  _prepare: (cb: (err: Error | null, args?: string[]) => void, readMetadata?: boolean) => void;
-}
+type MockableFfmpegCommand = FfmpegCommandThis;
 
 // --- Feature for issue #54 / upstream #1191 ---------------------------
 //
@@ -33,15 +25,15 @@ function setupCmd(opts: { skipMetadata?: boolean }): {
   probeCount: () => number;
 } {
   let count = 0;
-  const cmd = new Ffmpeg({ source: 'irrelevant.mp4', ...opts }) as MockableFfmpegCommand;
+  const cmd: MockableFfmpegCommand = new Ffmpeg({ source: 'irrelevant.mp4', ...opts });
   cmd._checkCapabilities = (cb) => cb();
   cmd._getFfmpegPath = (cb) => cb(null, '/dummy/ffmpeg');
   cmd._getFlvtoolPath = (cb) => cb(null, '/dummy/flvmeta');
   cmd.availableEncoders = (cb) => cb(null, {});
-  cmd._spawnFfmpeg = () => {
+  cmd._spawnFfmpeg = (..._args: unknown[]): void => {
     /* mock: skip real spawn */
   };
-  cmd.ffprobe = (..._args: unknown[]): void => {
+  cmd.ffprobe = () => {
     count += 1;
   };
   return { cmd, probeCount: () => count };
@@ -88,7 +80,7 @@ describe('skipMetadata option (issue #54)', () => {
   });
 
   it('options.skipMetadata is reflected on the command instance', () => {
-    const cmd = new Ffmpeg({ source: 'foo.mp4', skipMetadata: true }) as MockableFfmpegCommand;
+    const cmd: MockableFfmpegCommand = new Ffmpeg({ source: 'foo.mp4', skipMetadata: true });
     assert.equal(cmd.options.skipMetadata, true);
   });
 });
