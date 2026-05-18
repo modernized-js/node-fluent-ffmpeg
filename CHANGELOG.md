@@ -1,8 +1,24 @@
 # Changelog
 
-All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/) with the caveat that 0.x releases treat upstream bug fixes (where prior behaviour was already broken) as `fix` rather than `BREAKING` — see the de-facto behaviour change note for #42 below.
+All notable changes to `@modernized/fluent-ffmpeg` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/).
+
+From **1.0.0** onward the public API is considered stable and strict SemVer applies — any breaking change (including type-only breaking changes) gets a major bump. The `0.x` releases (through `0.1.5`) used a relaxed convention where upstream bug fixes that corrected already-broken behaviour were treated as `fix` rather than `BREAKING`; those notes are preserved verbatim in their version sections below for historical accuracy.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-05-18
+
+First stable release. **No code changes since `0.1.5`** — this release promotes the surface that shipped through the `0.1.x` line to a stable, SemVer-guaranteed API.
+
+The cumulative public surface as of `1.0.0` is the sum of every `0.1.x` entry below, notably:
+
+- The full chainable `FfmpegCommand` API mirrored after the original `@types/fluent-ffmpeg` (DefinitelyTyped), re-implemented in TypeScript.
+- Typed event channels: `start`, `progress`, `stderr`, `codecData` (variadic — one `InputInfo` per input), `error` (err typed as the exported `ReportingError`, carrying optional `inputStreamError` / `outputStreamError`), `filenames`, `end`.
+- Exported types consumers can import by name: `ReportingError`, `PipeOptions`, `ArgValue`, `FfmpegCommandThis`, the `Ffprobe*` family, the capability-info records (`CodecInfo` / `EncoderInfo` / `FormatInfo` / `FilterInfo`), `ScreenshotsConfig`, `FfmpegCommandOptions`, and the rest of `lib/types.ts`.
+- Constructor `skipMetadata` option; per-input `durationInput()` / `setInputDuration()`.
+- All upstream bug-fix parity through [fluent-ffmpeg#1131](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/pull/1131) / [#928](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/pull/928) / [#1017](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/pull/1017) / [#1301](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/pull/1301) and the earlier #37–#54 set.
+
+Consumers already on `0.1.5` can upgrade to `1.0.0` with no code or type changes.
 
 ## [0.1.5] - 2026-05-12
 
