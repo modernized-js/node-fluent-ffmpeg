@@ -44,21 +44,21 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.6.2",
+    "@types/node": "^25.9.3",
     "@types/which": "^3.0.4",
-    "eslint": "^10.3.0",
+    "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.5",
-    "eslint-plugin-security": "^4.0.0",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-security": "^4.0.1",
     "eslint-plugin-sonarjs": "^4.0.3",
     "globals": "^17.6.0",
     "jsdoc": "^4.0.5",
-    "prettier": "^3.4.2",
+    "prettier": "^3.8.4",
     "tsd": "^0.33.0",
-    "tsx": "^4.19.2",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.61.1"
   },
   "scripts": {
     "format": "prettier --write .",
