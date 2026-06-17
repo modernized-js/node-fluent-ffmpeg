@@ -6,6 +6,12 @@ From **1.0.0** onward the public API is considered stable and strict SemVer appl
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-17
+
+### Internal
+
+- Routine devDependency refresh (#72): `@types/node` 25.6.2 → 25.9.3, `eslint` 10.3.0 → 10.5.0, `eslint-plugin-prettier` 5.5.5 → 5.5.6, `eslint-plugin-security` 4.0.0 → 4.0.1, `prettier` 3.4.2 → 3.8.4, `tsx` 4.19.2 → 4.22.4, `typescript-eslint` 8.20.0 → 8.61.1. No runtime dependencies changed; published package contents are identical to `1.0.0`.
+
 ## [1.0.0] - 2026-05-18
 
 First stable release. **No code changes since `0.1.5`** — this release promotes the surface that shipped through the `0.1.x` line to a stable, SemVer-guaranteed API.
