@@ -1,6 +1,6 @@
 {
   "name": "@modernized/fluent-ffmpeg",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A fluent API to FFMPEG (http://www.ffmpeg.org) — modernized fork in TypeScript",
   "keywords": [
     "ffmpeg"
@@ -44,21 +44,21 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.1.1",
     "@types/which": "^3.0.4",
-    "eslint": "^10.5.0",
+    "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.6",
     "eslint-plugin-security": "^4.0.1",
     "eslint-plugin-sonarjs": "^4.0.3",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "jsdoc": "^4.0.5",
-    "prettier": "^3.8.4",
+    "prettier": "^3.9.5",
     "tsd": "^0.33.0",
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.64.0"
   },
   "scripts": {
     "format": "prettier --write .",
