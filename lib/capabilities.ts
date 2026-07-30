@@ -12,16 +12,20 @@ import type {
   PathCallback,
 } from './types.js';
 
-const avCodecRegexp = /^\s*([D ])([E ])([VAS])([S ])([D ])([T ]) ([^ ]+) +(.*)$/;
-const ffCodecRegexp = /^\s*([D.])([E.])([VAS])([I.])([L.])([S.]) ([^ ]+) +(.*)$/;
+// Every parser below feeds these a single line (see lineBreakRegexp), so the
+// trailing description group ends the match on its own — a `$` there would only
+// give the engine somewhere to backtrack to (sonarjs/super-linear-regex).
+const avCodecRegexp = /^\s*([D ])([E ])([VAS])([S ])([D ])([T ]) ([^ ]+) +(.*)/;
+const ffCodecRegexp = /^\s*([D.])([E.])([VAS])([I.])([L.])([S.]) ([^ ]+) +(.*)/;
 const ffEncodersRegexp = /\(encoders:([^)]+)\)/;
 const ffDecodersRegexp = /\(decoders:([^)]+)\)/;
-const encodersRegexp = /^\s*([VAS.])([F.])([S.])([X.])([B.])([D.]) ([^ ]+) +(.*)$/;
-// The 3rd flag column [d ] is for device demuxers/muxers (e.g. `D d lavfi`)
-// — ffmpeg emits a 3-column flag area for those. Optional `[d ]?` consumes it.
-const formatRegexp = /^\s*([D ])([E ])[d ]?\s+([^ ]+)\s+(.*)$/;
+const encodersRegexp = /^\s*([VAS.])([F.])([S.])([X.])([B.])([D.]) ([^ ]+) +(.*)/;
+// The 3rd flag column is the device marker (e.g. `D d lavfi`), which `-formats`
+// emits but `-devices` does not. So after the two captured flags the name is
+// preceded by `d` plus one space, or by one space (2-column) or two (3-column).
+const formatRegexp = /^\s*([D ])([E ])d? {1,2}([^ ]+) +(.*)/;
 const lineBreakRegexp = /\r\n|\r|\n/;
-const filterRegexp = /^(?: [T.][S.][C.] )?([^ ]+) +(AA?|VV?|\|)->(AA?|VV?|\|) +(.*)$/;
+const filterRegexp = /^(?: [T.][S.][C.] )?([^ ]+) +(AA?|VV?|\|)->(AA?|VV?|\|) +(.*)/;
 
 const codecTypeByLetter: Record<string, 'video' | 'audio' | 'subtitle'> = {
   V: 'video',

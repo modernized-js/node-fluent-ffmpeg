@@ -11,7 +11,7 @@ import type { FilterSpec, OutputState } from '../lib/types.js';
 
 type SizeData = NonNullable<OutputState['sizeData']>;
 
-const matchWidth = (s: string): RegExpMatchArray | null => s.match(/(\d+)x\?/);
+const matchWidth = (s: string): RegExpMatchArray | null => s.match(/\b(\d+)x\?/);
 const matchHeight = (s: string): RegExpMatchArray | null => s.match(/\?x(\d+)/);
 
 function assertIsRecord(value: unknown): asserts value is Record<string, unknown> {

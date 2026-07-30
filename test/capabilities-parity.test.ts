@@ -73,6 +73,36 @@ describe('parseFormatsOutput (issue #37 — device demuxer parity)', () => {
     });
   });
 
+  it('parses the 3-column flag area ffmpeg 7.x prints for non-device rows', () => {
+    const stdout = [
+      'Formats:',
+      ' D.. = Demuxing supported',
+      ' .E. = Muxing supported',
+      ' ..d = Is a device',
+      ' ---',
+      ' D   3dostr          3DO STR',
+      '  E  3g2             3GP2 (3GPP2 file format)',
+      ' D d lavfi           Libavfilter virtual input device',
+    ].join('\n');
+    const result = parseFormatsOutput(stdout);
+    assert.deepEqual(Object.keys(result).sort(), ['3dostr', '3g2', 'lavfi']);
+    assert.deepEqual(result['3dostr'], {
+      description: '3DO STR',
+      canDemux: true,
+      canMux: false,
+    });
+    assert.deepEqual(result['3g2'], {
+      description: '3GP2 (3GPP2 file format)',
+      canDemux: false,
+      canMux: true,
+    });
+    assert.deepEqual(result.lavfi, {
+      description: 'Libavfilter virtual input device',
+      canDemux: true,
+      canMux: false,
+    });
+  });
+
   it('keeps comma-separated alias rows working alongside device rows', () => {
     const stdout = [' D  matroska,webm    Matroska / WebM', ' D d lavfi          Lavfi'].join('\n');
     const result = parseFormatsOutput(stdout);

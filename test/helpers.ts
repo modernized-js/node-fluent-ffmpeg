@@ -16,7 +16,6 @@ function getFfmpegCheck(): string {
 function isCommandInPath(cmd: string): boolean {
   try {
     const probe = process.platform === 'win32' ? `where /Q ${cmd}` : `command -v ${cmd}`;
-    // eslint-disable-next-line sonarjs/os-command -- PATH probe: shell builtin with our own cmd arg, used only to skip ffmpeg-dependent tests
     execSync(probe, { stdio: 'ignore' });
     return true;
   } catch {

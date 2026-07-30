@@ -96,8 +96,8 @@ function createSizeFilters(
 
   if (data.size === undefined) return [];
 
-  const fixedSize = data.size.match(/([0-9]+)x([0-9]+)/);
-  const fixedWidth = data.size.match(/([0-9]+)x\?/);
+  const fixedSize = data.size.match(/\b([0-9]+)x([0-9]+)/);
+  const fixedWidth = data.size.match(/\b([0-9]+)x\?/);
   const fixedHeight = data.size.match(/\?x([0-9]+)/);
   const percentRatio = data.size.match(/\b([0-9]{1,3})%/);
 
