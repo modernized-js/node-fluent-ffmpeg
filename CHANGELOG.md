@@ -6,6 +6,23 @@ From **1.0.0** onward the public API is considered stable and strict SemVer appl
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-31
+
+### Changed
+
+- **`size()` no longer accepts a spec whose digits follow a word character.** The `WxH` and `Wx?` matchers are now anchored with `\b`, so `size('x099x9')` raises `Invalid size specified` instead of being silently parsed as `099x9`. The documented forms — `'640x480'`, `'640x?'`, `'?x480'`, `'50%'` — are unaffected, as is any spec that starts at a non-word character. The unanchored matchers rescanned from every offset, which is quadratic in the length of the spec; `\b` pins the start and matches how the neighbouring percent matcher was already written.
+
+### Internal
+
+- Routine devDependency refresh (#76): `@types/node` 26.1.1 → 26.1.2, `eslint` 10.7.0 → 10.8.0, `eslint-plugin-sonarjs` 4.0.3 → 4.2.0, `globals` 17.7.0 → 17.8.0, `prettier` 3.9.5 → 3.9.6, `typescript-eslint` 8.64.0 → 8.65.0. TypeScript deliberately held back. No runtime dependencies changed.
+- The sonarjs bump moved `super-linear-regex` into its `recommended` set, which flagged the ffmpeg output parsers in `lib/capabilities.ts`. Two ambiguities were removed: the redundant trailing `$` after the description group (every caller splits on line breaks first, so `(.*)` already ends the match) and `formatRegexp`'s `[d ]?\s+`, where the optional device-flag column and the separator both matched a space. The latter became `d? {1,2}`, sized against the three layouts ffmpeg emits — `-devices` 2-column rows (` D  lavfi`), `-formats` 3-column rows (` D   3dostr`), and `-formats` device rows (` D d lavfi`). Equivalence with the previous patterns was verified differentially over real ffmpeg 7.x capability output, the parity fixtures, and 200k fuzz inputs; the parsed results are identical.
+
+## [1.0.2] - 2026-07-16
+
+### Internal
+
+- Routine devDependency refresh (#74): `@types/node` 25.9.3 → 26.1.1, `eslint` 10.5.0 → 10.7.0, `globals` 17.6.0 → 17.7.0, `prettier` 3.8.4 → 3.9.5, `tsx` 4.22.4 → 4.23.1, `typescript-eslint` 8.61.1 → 8.64.0. No runtime dependencies changed; published package contents are identical to `1.0.1`.
+
 ## [1.0.1] - 2026-06-17
 
 ### Internal
