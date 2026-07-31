@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Library source is lib/**/*.ts. The root index.ts is the public API entry
+  // (package.json "main": dist/index.js is its build output); it is listed explicitly because
+  // "main" points at the uncommitted dist build, so knip cannot auto-detect it.
+  //
+  // Entry points, not analyzed source:
+  //   - test/**/*.ts, test-d/**/*.ts  — standalone scripts that exercise the library.
+  //   - lib/presets/*.ts              — dynamically-loaded plugin modules. `.preset('divx')`
+  //     resolves and imports lib/presets/<name>.js BY NAME at runtime (see
+  //     lib/options/misc.ts loadPresetByName), which knip cannot trace statically. Declaring
+  //     the plugin dir as entry points is the correct model; without it these live, published
+  //     files show up as false-positive "unused files".
+  "entry": ["test/**/*.ts", "test-d/**/*.ts", "index.ts", "lib/presets/*.ts"],
+  "project": ["lib/**/*.ts"],
+  "ignoreExportsUsedInFile": true,
+  "includeEntryExports": false,
+  "rules": {
+    // Warn mode: every rule is "warn" (reported, exit 0) or "off". Nothing gates CI here.
+    "files": "warn",
+    "dependencies": "warn",
+    "devDependencies": "warn",
+    "unlisted": "warn",
+    "exports": "warn",
+    "types": "warn",
+    "unresolved": "off",
+    "binaries": "off",
+    "nsExports": "off",
+    "nsTypes": "off",
+    "enumMembers": "off",
+    "duplicates": "off",
+  },
+}
