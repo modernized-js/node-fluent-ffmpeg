@@ -8,3 +8,6 @@ coverage
 dist
 .envrc
 .envrc~
+
+# jscpd duplication-scan output (see .github/workflows/duplication-scan.yaml)
+report/
