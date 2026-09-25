@@ -37,29 +37,29 @@
     "node": ">=22"
   },
   "dependencies": {
-    "which": "^6.0.1"
+    "which": "^7.0.0"
   },
   "resolutions": {
     "lodash": "^4.18.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.6.2",
     "@types/which": "^3.0.4",
-    "eslint": "^10.8.0",
+    "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.6",
     "eslint-plugin-security": "^4.0.1",
-    "eslint-plugin-sonarjs": "^4.2.0",
-    "globals": "^17.8.0",
+    "eslint-plugin-sonarjs": "^4.2.1",
+    "globals": "^17.12.0",
     "jsdoc": "^4.0.5",
-    "knip": "^6",
-    "prettier": "^3.9.6",
+    "knip": "^6.38.0",
+    "prettier": "^3.9.9",
     "tsd": "^0.33.0",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.70.1"
   },
   "scripts": {
     "format": "prettier --write .",
