@@ -183,7 +183,7 @@ function parseCodecFfLine(line: string, data: Record<string, CodecInfo>): void {
 
 export function parseFiltersOutput(stdout: string): Record<string, FilterInfo> {
   const data: Record<string, FilterInfo> = {};
-  stdout.split('\n').forEach((line) => {
+  stdout.split(lineBreakRegexp).forEach((line) => {
     const match = line.replace(filterFlagsRegexp, '').match(filterRegexp);
     if (!match) return;
     data[match[1]] = {

@@ -72,6 +72,13 @@ describe('parseFiltersOutput (issue #82 — ffmpeg 8 row format)', () => {
     });
   }
 
+  it('reads CRLF output (Windows) the same as LF output', () => {
+    assert.deepEqual(
+      parseFiltersOutput(ffmpeg8.split('\n').join('\r\n')),
+      parseFiltersOutput(ffmpeg8),
+    );
+  });
+
   it('returns an empty table for output with no filter rows', () => {
     assert.deepEqual(parseFiltersOutput(legend(false).join('\n')), {});
     assert.deepEqual(parseFiltersOutput(''), {});
