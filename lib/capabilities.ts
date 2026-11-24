@@ -25,7 +25,10 @@ const encodersRegexp = /^\s*([VAS.])([F.])([S.])([X.])([B.])([D.]) ([^ ]+) +(.*)
 // preceded by `d` plus one space, or by one space (2-column) or two (3-column).
 const formatRegexp = /^\s*([D ])([E ])d? {1,2}([^ ]+) +(.*)/;
 const lineBreakRegexp = /\r\n|\r|\n/;
-const filterRegexp = /^(?: [T.][S.][C.] )?([^ ]+) +(AA?|VV?|\|)->(AA?|VV?|\|) +(.*)/;
+// ffmpeg 8 dropped the 3rd "Command support" flag column from `-filters` rows (` T. name` vs ` T.. name`).
+// The flags are stripped first so neither expression nests an optional group (security/detect-unsafe-regex).
+const filterFlagsRegexp = /^ [T.][S.][C.]? /;
+const filterRegexp = /^([^ ]+) +(AA?|VV?|\|)->(AA?|VV?|\|) +(.*)/;
 
 const codecTypeByLetter: Record<string, 'video' | 'audio' | 'subtitle'> = {
   V: 'video',
@@ -178,10 +181,10 @@ function parseCodecFfLine(line: string, data: Record<string, CodecInfo>): void {
   expandCoders(codecData, encoders, decoders, data);
 }
 
-function parseFiltersOutput(stdout: string): Record<string, FilterInfo> {
+export function parseFiltersOutput(stdout: string): Record<string, FilterInfo> {
   const data: Record<string, FilterInfo> = {};
-  stdout.split('\n').forEach((line) => {
-    const match = line.match(filterRegexp);
+  stdout.split(lineBreakRegexp).forEach((line) => {
+    const match = line.replace(filterFlagsRegexp, '').match(filterRegexp);
     if (!match) return;
     data[match[1]] = {
       description: match[4],
